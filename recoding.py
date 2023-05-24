@@ -58,7 +58,7 @@ DIC_for_A_rich = {
 }
 
 class Codon:
-    def __init__(self, position, sequence, next_codon=None, has_cg=False, protected=False, cg_split=False, mutable=None, potential_new_seq=None, mutated=False, packaging=False):
+    def __init__(self, position, sequence, next_codon=None, has_cg=False, protected=False, cg_split=False, mutable=None, potential_new_seq=None, mutated=False):
         self.position = position # Position of the codon, not the CG!
         self.sequence = sequence
         self.next_codon = next_codon
@@ -110,14 +110,14 @@ class Codon:
 
 
 class Gene:
-    def __init__(self, original_sequence, packaging_signal_length_beginning, packaging_signal_length_end, minimum_CpG_gap):
+    def __init__(self, original_sequence, packaging_signal_length_beginning, packaging_signal_length_end, minimum_CpG_gap, desired_CpG_gap):
         self.original_sequence = original_sequence
         self.new_sequence = None
 
         self.packaging_signal_length_beginning = packaging_signal_length_beginning
         self.packaging_signal_length_end = packaging_signal_length_end
         self.minimum_CpG_gap = minimum_CpG_gap
-        self.minimum_CpG_gap_extra = self.minimum_CpG_gap + 1
+        self.desired_CpG_gap = desired_CpG_gap
 
         self.original_cg_positions = []
         self.mutable_positions = []
@@ -126,13 +126,22 @@ class Gene:
 
         self.current_codons = self.original_codons.copy()
         self.current_cg_positions = self.original_cg_positions.copy()
-        self.original_average_gap = self.calculate_average_gap(self.original_cg_positions)
-        self.new_average_gap = self.calculate_average_gap(self.current_cg_positions)
+        self.original_average_gap = self.calculate_average_gap("original")
+        self.new_average_gap = self.calculate_average_gap()
 
-        #self.protect_codons()
-        self.determine_changeable_CpG()
+        self.check_minimum_CpG_gap()
 
-    
+    @property
+    def minimum_CpG_gap_extra(self):
+        return self.minimum_CpG_gap + 1
+
+    def check_minimum_CpG_gap(self):
+        if self.minimum_CpG_gap == None:
+            self.find_desired_gap(self.desired_CpG_gap)
+        elif self.desired_CpG_gap == None:
+            self.determine_changeable_CpG()
+            self.mutate_CpG()
+
     # Creates class instances for codons and looks for original CpG's
     def analyze_codons(self):
         codons = []
@@ -222,15 +231,14 @@ class Gene:
         self.load_new_sequence()
 
 
-
-    def find_optimal_gap(self, n):
+    def find_desired_gap(self, desired_gap):
         def create_sequence(min_gap):
-            # Implement this function according to your specific rules
-            pass
-
-        def average_gap(sequence):
-            # Implement this function to compute average gap
-            pass
+            self.minimum_CpG_gap = min_gap
+            self.current_cg_positions = self.original_cg_positions.copy()
+            self.current_codons = self.original_codons.copy()
+            self.mutable_positions = []
+            self.determine_changeable_CpG()
+            self.mutate_CpG()
 
         lower_bound = 0
         upper_bound = self.sequence_length
@@ -239,20 +247,21 @@ class Gene:
 
         while lower_bound <= upper_bound:
             mid = (lower_bound + upper_bound) // 2
-            sequence = create_sequence(mid)
-            avg_gap = average_gap(sequence)
+            create_sequence(mid)
+            avg_gap = self.calculate_average_gap()
 
-            if avg_gap == n:
+            if avg_gap == desired_gap:
                 return mid
-            elif avg_gap < n:
+            elif avg_gap < desired_gap:
                 lower_bound = mid + 1
             else:
                 upper_bound = mid - 1
 
-            if abs(avg_gap - n) < smallest_diff:
-                smallest_diff = abs(avg_gap - n)
+            if abs(avg_gap - desired_gap) < smallest_diff:
+                smallest_diff = abs(avg_gap - desired_gap)
                 closest_gap = mid
 
+        print(f"A minimum gap of {closest_gap} was found to result in the closest match to your desired gap")
         return closest_gap
 
 
@@ -301,7 +310,12 @@ class Gene:
         return counter
 
     # Calculates the average gap between CpG's in the sequence
-    def calculate_average_gap(self, positions):
+    def calculate_average_gap(self, mode = "current"):
+        if mode == "original":
+            positions = self.original_cg_positions
+        elif mode == "current":
+            positions = self.current_cg_positions
+
         gaps = []
         for i in range(len(positions) - 1):
             gap = positions[i + 1] - (positions[i] + 1)
@@ -380,9 +394,11 @@ def main():
 
     def prompt_for_integer(prompt_message):
         while True:
-            input_str = input(prompt_message)
+            input_str = input(prompt_message).strip()
             if chr(27) in input_str:
                 sys.exit()
+            if input_str.lower() == "o":
+                return 'o'
             try:
                 input_int = int(input_str)
                 if input_int < 0:
@@ -392,24 +408,47 @@ def main():
             else:
                 return input_int
 
+    def prompt_for_specific_numbers(prompt_message, target_nums):
+        while True:
+            input_str = input(prompt_message).strip()
+            if chr(27) in input_str:
+                sys.exit()
+            try:
+                input_int = int(input_str)
+                if input_int not in target_nums:
+                    raise ValueError
+            except ValueError:
+                print(f"Please enter one of the following numbers: {target_nums}.")
+            else:
+                return input_int
+
     def get_input_variables():
-        print("At any prompt, you can exit the program by pressing Esc followed by Enter")
-        print("")
+        minimum_CpG_gap = None
+        desired_CpG_gap = None
+        
         packaging_signal_length_beginning = prompt_for_integer("Enter the length of the packaging signal to be protected in the beginning of the sequence: ")
         packaging_signal_length_end = prompt_for_integer("Enter the length of the packaging signal to be protected in the end of the sequence: ")
-        minimum_CpG_gap = prompt_for_integer("Enter the minimum length of a gap between an existing CpG and one to be added: ")
         print("")
+        print("If you know the minimum CpG gap you would like to apply, enter 1")
+        print("If you have a desired average CpG gap and would like the script to calculate an optimal minimum CpG gap, enter 2")
+        gap_method = prompt_for_specific_numbers("Choose: ", [1, 2])
 
-        return packaging_signal_length_beginning, packaging_signal_length_end, minimum_CpG_gap
+        if gap_method == 1:
+            minimum_CpG_gap = prompt_for_integer("Enter the minimum length of a gap between an existing CpG and one to be added: ")
+        elif gap_method == 2:
+            desired_CpG_gap = prompt_for_integer("Enter the desired average optimal gap: ")
+        
+
+        print("")
+        return packaging_signal_length_beginning, packaging_signal_length_end, minimum_CpG_gap, desired_CpG_gap
+
 
     def print_troubleshoot_details():
         gene.read_codons()
         gene.print_changeable_CpG()
-
-    def perform_CpG_mutations(gene):
-        gene.mutate_CpG()
     
     def perform_A_mutations(gene):
+        print(f"The new average CpG gap is: {gene.calculate_average_gap()}")
         while True:
             ask_A_rich = input("Do you want to make the sequence A-rich? (Y/N): ")
             if chr(27) in ask_A_rich:
@@ -420,12 +459,11 @@ def main():
             elif ask_A_rich.lower() == "n":
                 break
     
-    def display_statistics(gene):
+    def collect_statistics(gene):
         original_CpG_count = gene.count_CpGs(gene.original_sequence)
         final_CpG_count = gene.count_CpGs(gene.new_sequence)
-        original_average_gap = gene.calculate_average_gap(gene.original_cg_positions)
-        final_average_gap = gene.calculate_average_gap(gene.current_cg_positions)
-        print(f"The new average CpG distance is: {final_average_gap}")
+        original_average_gap = gene.calculate_average_gap("original")
+        final_average_gap = gene.calculate_average_gap()
         print('')
         A_abundance_change = gene.calculate_A_abundance_change()
         print('')
@@ -461,11 +499,12 @@ def main():
 
         return SeqIO.write(record, f"outputs/{current_date}/{gene_file_name}-recoded-{id}.fasta", "fasta")
 
+    print("At any prompt, you can exit the program by pressing Esc followed by Enter")
+    print("")
     original_sequence, gene_file_name = load_file()
-    packaging_signal_length_beginning, packaging_signal_length_end, minimum_CpG_gap = get_input_variables()
+    packaging_signal_length_beginning, packaging_signal_length_end, minimum_CpG_gap, desired_CpG_gap = get_input_variables()
 
-    gene = Gene(original_sequence, packaging_signal_length_beginning, packaging_signal_length_end, minimum_CpG_gap)
-    perform_CpG_mutations(gene)
+    gene = Gene(original_sequence, packaging_signal_length_beginning, packaging_signal_length_end, minimum_CpG_gap, desired_CpG_gap)
 
     # Uncomment if you want to print the original gene sequence in terminal and to print mutable CpG-enriching codons    
     #print_troubleshoot_details()
@@ -473,7 +512,7 @@ def main():
     perform_A_mutations(gene)
     gene.check_synonymity()
     gene.check_packaging_signals()
-    original_CpG_count, final_CpG_count, original_average_gap, final_average_gap, A_abundance_change = display_statistics(gene)
+    original_CpG_count, final_CpG_count, original_average_gap, final_average_gap, A_abundance_change = collect_statistics(gene)
 
     save_new_gene(gene.new_sequence, gene_file_name, get_output_id(), final_CpG_count, original_CpG_count, final_average_gap, original_average_gap, A_abundance_change, packaging_signal_length_beginning, packaging_signal_length_end, minimum_CpG_gap)
 
