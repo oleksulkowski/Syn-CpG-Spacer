@@ -160,32 +160,6 @@ class Gene:
         self.original_cg_positions.sort()
         return codons
     
-    # Unused, so uncomment at the bottom of the page if you want to print the original genetic sequences in the terminal
-    def read_codons(self):
-        for codon in self.original_codons:
-            print(codon.sequence, end='')
-        print('')
-
-    # Counts the number of CpG's in a genetic sequence
-    def count_CpGs(self, sequence):
-        counter = 0
-        for i in range(len(sequence) - 1):
-            if sequence[i:i+2] == "CG":
-                counter += 1
-        return counter
-
-    # Apart from original CpG's, we also want the 5' and 3' packaging signals to be unchanged (protected)
-    #def protect_codons(self):
-        counter = 0
-        for codon in self.current_codons:
-            if codon.position < self.packaging_signal_length_beginning or codon.position >= self.sequence_length - self.packaging_signal_length_end:
-                codon.protected = True
-            if codon.protected:
-                counter += 1
-        print("")
-        print(f"Number of protected codons: {counter}. These are codons in the 5' and 3' packaging sequences as well as those that already contribute to a CpG. They won't be changed.")
-        print("")
-    
     def enforce_packaging_signal(self, codon):
         mutation_positions = codon.get_mutation_position()
         comparison_results = []
@@ -193,7 +167,16 @@ class Gene:
                 result = (self.packaging_signal_length_beginning - 1) < mutation_position < (self.sequence_length - self.packaging_signal_length_end)
                 comparison_results.append(result)
                 return all(comparison_results)
-    
+
+    # Applies mutations into the object to create a new sequence
+    def load_new_sequence(self):
+        self.new_sequence = ''
+        for codon in self.current_codons:
+            if codon.mutated:
+                self.new_sequence = self.new_sequence + codon.potential_new_seq
+            else:
+                self.new_sequence = self.new_sequence + codon.sequence
+
     # Finds which codons can be synonymously mutated to give more CpG's. Such codons must have at least a minimum_CpG_gap nucleotides long gap between another CpG
     def determine_changeable_CpG(self):
         for codon in self.current_codons:
@@ -211,36 +194,6 @@ class Gene:
             if codon.mutable:
                 self.mutable_positions.append(codon.get_cg_position(codon.potential_new_seq))
         self.mutable_positions.sort()
-
-    # See the details of which codons can possibly be mutated. Prints into terminal. Good for testing without saving
-    def print_changeable_CpG(self):
-        for codon in self.current_codons:
-            if codon.mutable:
-                print(f'{codon.sequence} | {codon.position} | {codon.potential_new_seq} | {codon.get_cg_position(codon.potential_new_seq)}')
-        print("Codon | Codon position | New codon | New CpG position (based on C)")
-        print("")
-
-    # Calculates the average gap between CpG's in the sequence
-    def calculate_average_gap(self, positions):
-        gaps = []
-        for i in range(len(positions) - 1):
-            gap = positions[i + 1] - (positions[i] + 1)
-            gaps.append(gap)
-        
-        if len(gaps) == 0:
-            return None
-        else:
-            result = round((sum(gaps) / len(gaps)), 3)
-            return result
-
-    # Applies mutations into the object to create a new sequence
-    def load_new_sequence(self):
-        self.new_sequence = ''
-        for codon in self.current_codons:
-            if codon.mutated:
-                self.new_sequence = self.new_sequence + codon.potential_new_seq
-            else:
-                self.new_sequence = self.new_sequence + codon.sequence
 
     # Applies synonymous mutations in a 5' to 3' direction. Ensures there are sufficient gaps between new CpG's
     def mutate_CpG(self):
@@ -343,8 +296,29 @@ class Gene:
         print(protected_substring2)
         if protected_substring1 != protected_substring2:
             sys.exit('ERROR: Protected packaging signal nucleotides have been changed!')
-    
-    def check_CpG_abundance_change(self):
+
+    # Counts the number of CpG's in a genetic sequence
+    def count_CpGs(self, sequence):
+        counter = 0
+        for i in range(len(sequence) - 1):
+            if sequence[i:i+2] == "CG":
+                counter += 1
+        return counter
+
+    # Calculates the average gap between CpG's in the sequence
+    def calculate_average_gap(self, positions):
+        gaps = []
+        for i in range(len(positions) - 1):
+            gap = positions[i + 1] - (positions[i] + 1)
+            gaps.append(gap)
+        
+        if len(gaps) == 0:
+            return None
+        else:
+            result = round((sum(gaps) / len(gaps)), 3)
+            return result
+
+    def calculate_CpG_abundance_change(self):
         original_CpG_abundance = self.count_CpGs(self.original_sequence)
         final_CpG_abundance = self.count_CpGs(self.new_sequence)
 
@@ -360,7 +334,7 @@ class Gene:
         return change
 
     # Calculates the change in A-richness of the sequence
-    def check_A_abundance_change(self):
+    def calculate_A_abundance_change(self):
         original_A_abundance = self.original_sequence.count('A') / len(self.original_sequence)
         final_A_abundance = self.new_sequence.count('A') / len(self.new_sequence)
         print(f"Initial vs final A proportion: {round(original_A_abundance, 3)} vs {round(final_A_abundance, 3)}")
@@ -371,6 +345,20 @@ class Gene:
         print(f"A-nucleotide abundance change: {abundance_change}%")
         return abundance_change
 
+    # Unused by default. Prints the original sequence in the terminal
+    def read_codons(self):
+        print("Original sequence: ", end="")
+        for codon in self.original_codons:
+            print(codon.sequence, end="")
+        print("")
+
+    # Unused by default. Shows the details of which codons can possibly be mutated. Prints into terminal. Good for testing without saving
+    def print_changeable_CpG(self):
+        for codon in self.current_codons:
+            if codon.mutable:
+                print(f"{codon.sequence} | {codon.position} | {codon.potential_new_seq} | {codon.get_cg_position(codon.potential_new_seq)}")
+        print("Codon | Codon position | New codon | New CpG position (based on C)")
+        print("")
 
 def main():
     def load_file():
@@ -419,13 +407,12 @@ def main():
 
         return packaging_signal_length_beginning, packaging_signal_length_end, minimum_CpG_gap
 
+    def print_troubleshoot_details():
+        gene.read_codons()
+        gene.print_changeable_CpG()
+
     def perform_CpG_mutations(gene):
-        # Uncomment to show original gene sequence in terminal
-        #gene.read_codons(gene.original_sequence)
-        # Uncomment if you want to check mutable CpG-enriching codons
-        #gene.print_changeable_CpG()
         gene.mutate_CpG()
-        print(gene.new_sequence)
     
     def perform_A_mutations(gene):
         while True:
@@ -445,7 +432,7 @@ def main():
         final_average_gap = gene.calculate_average_gap(gene.current_cg_positions)
         print(f"The new average CpG distance is: {final_average_gap}")
         print('')
-        A_abundance_change = gene.check_A_abundance_change()
+        A_abundance_change = gene.calculate_A_abundance_change()
         print('')
         return original_CpG_count, final_CpG_count, original_average_gap, final_average_gap, A_abundance_change
 
@@ -484,6 +471,10 @@ def main():
 
     gene = Gene(original_sequence, packaging_signal_length_beginning, packaging_signal_length_end, minimum_CpG_gap)
     perform_CpG_mutations(gene)
+
+    # Uncomment if you want to print the original gene sequence in terminal and to print mutable CpG-enriching codons    
+    #print_troubleshoot_details()
+
     perform_A_mutations(gene)
     gene.check_synonymity()
     gene.check_packaging_signals()
