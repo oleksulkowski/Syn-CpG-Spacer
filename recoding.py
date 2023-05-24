@@ -89,15 +89,12 @@ class Codon:
         # No CG pair was found
         return None
 
-    def get_mutation_position(self):
+    def get_mutation_positions(self):
         diff_positions = []
-        print(self.sequence)
-        print(self.potential_new_seq)
 
         for i in range(3):
             if self.sequence[i] != self.potential_new_seq[i]:
                 diff_positions.append(self.position + i)
-        print(diff_positions)
         return diff_positions
 
     def translate_codon(self):
@@ -161,7 +158,7 @@ class Gene:
         return codons
     
     def enforce_packaging_signal(self, codon):
-        mutation_positions = codon.get_mutation_position()
+        mutation_positions = codon.get_mutation_positions()
         comparison_results = []
         for mutation_position in mutation_positions:
                 result = (self.packaging_signal_length_beginning - 1) < mutation_position < (self.sequence_length - self.packaging_signal_length_end)
@@ -291,9 +288,7 @@ class Gene:
         else:
             protected_substring1 = self.original_sequence[:self.packaging_signal_length_beginning]
             protected_substring2 = self.new_sequence[:self.packaging_signal_length_beginning]
-        
-        print(protected_substring1)
-        print(protected_substring2)
+
         if protected_substring1 != protected_substring2:
             sys.exit('ERROR: Protected packaging signal nucleotides have been changed!')
 
