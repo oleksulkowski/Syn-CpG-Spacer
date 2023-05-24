@@ -3,6 +3,7 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 import sys
 import os
+import math
 from datetime import datetime
 
 # Taken from github.com/Mmark94/protein_recoding. For STOP codons, X is used as symbol.
@@ -71,6 +72,7 @@ class Codon:
 
         self.check_codon_viability()
 
+    # Relative to the 'C'
     def get_cg_position(self, sequence):
         if sequence is not None:
             # Check for a CG pair within this codon
@@ -110,37 +112,40 @@ class Codon:
 
 
 class Gene:
-    def __init__(self, original_sequence, packaging_signal_length_beginning, packaging_signal_length_end, minimum_CpG_gap, desired_CpG_gap):
+    def __init__(self, original_sequence, packaging_signal_length_beginning, packaging_signal_length_end, gap_method, minimum_CpG_gap, desired_CpG_gap):
         self.original_sequence = original_sequence
         self.new_sequence = None
 
+        self.sequence_length = len(original_sequence)
         self.packaging_signal_length_beginning = packaging_signal_length_beginning
         self.packaging_signal_length_end = packaging_signal_length_end
+        self.gap_method = gap_method
         self.minimum_CpG_gap = minimum_CpG_gap
         self.desired_CpG_gap = desired_CpG_gap
 
         self.original_cg_positions = []
         self.mutable_positions = []
-        self.sequence_length = len(original_sequence)
-        self.original_codons = self.analyze_codons() # Used only to store the original codons - no operations are performed on this attribute
 
+        self.original_codons = self.analyze_codons() # Used only to store the original codons - no operations are performed on this attribute
         self.current_codons = self.original_codons.copy()
         self.current_cg_positions = self.original_cg_positions.copy()
         self.original_average_gap = self.calculate_average_gap("original")
-        self.new_average_gap = self.calculate_average_gap()
 
-        self.check_minimum_CpG_gap()
+        self.check_gap_method()
 
     @property
     def minimum_CpG_gap_extra(self):
         return self.minimum_CpG_gap + 1
 
-    def check_minimum_CpG_gap(self):
-        if self.minimum_CpG_gap == None:
+    # See if the user defined a minimum gap, or defined an average CpG spacing, towards which the gap will be adjusted
+    def check_gap_method(self):
+        if self.gap_method == 2 and self.minimum_CpG_gap == None:
             self.find_desired_gap(self.desired_CpG_gap)
-        elif self.desired_CpG_gap == None:
+        elif self.gap_method == 1 and self.desired_CpG_gap == None:
             self.determine_changeable_CpG()
             self.mutate_CpG()
+        elif self.gap_method == 3 and self.minimum_CpG_gap == None and self.desired_CpG_gap == None:
+            self.find_min_cv_gap()
 
     # Creates class instances for codons and looks for original CpG's
     def analyze_codons(self):
@@ -230,7 +235,6 @@ class Gene:
                         codon.mutated = True
         self.load_new_sequence()
 
-
     def find_desired_gap(self, desired_gap):
         def create_sequence(min_gap):
             self.minimum_CpG_gap = min_gap
@@ -261,9 +265,48 @@ class Gene:
                 smallest_diff = abs(avg_gap - desired_gap)
                 closest_gap = mid
 
-        print(f"A minimum gap of {closest_gap} was found to result in the closest match to your desired gap")
+        print(f"A minimum gap of {closest_gap} was found to result in the closest match to your desired ga. TEST: {d}")
         return closest_gap
 
+    def find_min_cv_gap(self):
+        def create_sequence(min_gap):
+            self.minimum_CpG_gap = min_gap
+            self.current_cg_positions = self.original_cg_positions.copy()
+            self.current_codons = self.original_codons.copy()
+            self.mutable_positions = []
+            self.determine_changeable_CpG()
+            self.mutate_CpG()
+
+        lower_bound = 0
+        upper_bound = self.sequence_length
+        best_gap = lower_bound
+        smallest_cv = float('inf')
+
+        while lower_bound <= upper_bound:
+            mid = (lower_bound + upper_bound) // 2
+            create_sequence(mid)
+            std_gap = self.calculate_average_gap("current", st_dev=True)
+            avg_gap = self.calculate_average_gap()
+
+            # calculate the coefficient of variation
+            if avg_gap != 0:  # Avoid division by zero
+                cv = std_gap / avg_gap
+            else:
+                cv = float('inf')
+
+            if cv < smallest_cv:
+                smallest_cv = cv
+                best_gap = mid
+
+            if avg_gap == mid:  # If the average gap equals mid, it's unlikely to get smaller coefficient of variation
+                break
+            elif avg_gap < mid:
+                lower_bound = mid + 1
+            else:
+                upper_bound = mid - 1
+
+        print(f"A minimum gap of {best_gap} was found to result in the smallest coefficient of variation of the gap, {smallest_cv}")
+        return best_gap
 
     # Translates a sequence into amino acids
     def translate_sequence(self, sequence):
@@ -310,7 +353,7 @@ class Gene:
         return counter
 
     # Calculates the average gap between CpG's in the sequence
-    def calculate_average_gap(self, mode = "current"):
+    def calculate_average_gap(self, mode = "current", st_dev = False):
         if mode == "original":
             positions = self.original_cg_positions
         elif mode == "current":
@@ -324,8 +367,15 @@ class Gene:
         if len(gaps) == 0:
             return None
         else:
-            result = round((sum(gaps) / len(gaps)), 3)
-            return result
+            average = round((sum(gaps) / len(gaps)), 3)
+
+        if st_dev == False:
+            return average
+        if st_dev == True and average is not None:
+            variances = [(gap - average) ** 2 for gap in gaps]
+            variance_average = sum(variances) / len(variances)
+            std_dev = round(math.sqrt(variance_average), 3)
+            return std_dev
 
     def calculate_CpG_abundance_change(self):
         original_CpG_abundance = self.count_CpGs(self.original_sequence)
@@ -431,7 +481,8 @@ def main():
         print("")
         print("If you know the minimum CpG gap you would like to apply, enter 1")
         print("If you have a desired average CpG gap and would like the script to calculate an optimal minimum CpG gap, enter 2")
-        gap_method = prompt_for_specific_numbers("Choose: ", [1, 2])
+        print("If you would like to create a sequence with the most consistent CpG spacing (with lowest SD of gap), enter 3")
+        gap_method = prompt_for_specific_numbers("Choose: ", [1, 2, 3])
 
         if gap_method == 1:
             minimum_CpG_gap = prompt_for_integer("Enter the minimum length of a gap between an existing CpG and one to be added: ")
@@ -440,7 +491,7 @@ def main():
         
 
         print("")
-        return packaging_signal_length_beginning, packaging_signal_length_end, minimum_CpG_gap, desired_CpG_gap
+        return packaging_signal_length_beginning, packaging_signal_length_end, gap_method, minimum_CpG_gap, desired_CpG_gap
 
 
     def print_troubleshoot_details():
@@ -502,9 +553,9 @@ def main():
     print("At any prompt, you can exit the program by pressing Esc followed by Enter")
     print("")
     original_sequence, gene_file_name = load_file()
-    packaging_signal_length_beginning, packaging_signal_length_end, minimum_CpG_gap, desired_CpG_gap = get_input_variables()
+    packaging_signal_length_beginning, packaging_signal_length_end, gap_method, minimum_CpG_gap, desired_CpG_gap = get_input_variables()
 
-    gene = Gene(original_sequence, packaging_signal_length_beginning, packaging_signal_length_end, minimum_CpG_gap, desired_CpG_gap)
+    gene = Gene(original_sequence, packaging_signal_length_beginning, packaging_signal_length_end, gap_method, minimum_CpG_gap, desired_CpG_gap)
 
     # Uncomment if you want to print the original gene sequence in terminal and to print mutable CpG-enriching codons    
     #print_troubleshoot_details()
