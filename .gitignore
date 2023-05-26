@@ -163,3 +163,4 @@ backups/
 old/
 outputs/
 *.fasta
+*.faa
