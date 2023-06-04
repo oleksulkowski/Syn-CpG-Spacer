@@ -164,3 +164,6 @@ old/
 outputs/
 *.fasta
 *.faa
+*.fa
+*.png
+*.ipynb
