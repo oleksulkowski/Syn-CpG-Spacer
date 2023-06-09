@@ -133,11 +133,13 @@ class Gene:
 
     # See if the user defined a minimum gap, or defined an average CpG spacing, towards which the gap will be adjusted
     def check_gap_method(self):
-        if self.gap_method == 2 and self.minimum_CpG_gap == None:
-            self.find_desired_gap(self.desired_CpG_gap)
+        if self.gap_method == None:
+            return
         elif self.gap_method == 1 and self.desired_CpG_gap == None:
             self.determine_changeable_CpG()
             self.mutate_CpG()
+        elif self.gap_method == 2 and self.minimum_CpG_gap == None:
+            self.closest_gap = self.find_desired_gap(self.desired_CpG_gap)
         elif self.gap_method == 3 and self.minimum_CpG_gap == None and self.desired_CpG_gap == None:
             def prompt_for_integer(message):
                 while True:
@@ -393,7 +395,7 @@ class Gene:
             else:
                 change = 0.0  # If both original and final are 0, there's no change
         else:
-            change = round((final_CpG_abundance / original_CpG_abundance)*100, 1)
+            change = round(((final_CpG_abundance - original_CpG_abundance) / original_CpG_abundance)*100, 1)
 
         print(f"CpG abundance changed {change}%")
         return change
