@@ -1,7 +1,7 @@
 {
   "name": "SynRecoder",
   "short_name": "SynRecoder",
-  "start_url": "app.html",
+  "start_url": "index.html",
   "icons": [
     {
       "src": "images/icon-vector.svg",
