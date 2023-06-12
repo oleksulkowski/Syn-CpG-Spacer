@@ -446,8 +446,6 @@ class Gene:
 
 coloring_mode_btn = pnw.RadioButtonGroup(name='Coloring mode', options={"Highlight CpG's": 1, 'Color all nucleotides': 2}, button_style='solid', button_type='light')
 current_coloring_mode = 1
-seqs = pnw.LiteralInput(value=[], type=list)
-@pn.depends(seqs.param.value, coloring_mode_btn.param.value)
 def view_alignment():
     """Bokeh sequence alignment view"""
     global sequences
@@ -459,10 +457,32 @@ def view_alignment():
     seqs = [rec.seq for rec in (sequences)]
     ids = [rec.id for rec in sequences]
     text = [i for s in seqs for i in s]
-    colors = get_colors(seqs)    
+    text_str = ''.join(text)
+
+    def get_colors(mode):
+        """Make colors for bases in sequence. Color 'C' and 'G' green if they form 'CG'."""
+        cache_key = (mode, text_str)
+        if cache_key in pn.state.cache:
+            return pn.state.cache[cache_key]
+
+        if mode == 1:
+            clrs = {'A':'white','T':'white','G':'white','C':'white','-':'white'}
+            colors = [clrs[i] for i in text]
+            # Re-color 'C' and 'G' in 'CG' to green
+            for i in range(len(colors) - 1):
+                if text[i] == 'C' and text[i+1] == 'G':
+                    colors[i] = 'green'   # 'C' in 'CG' is green
+                    colors[i+1] = 'green'  # 'G' in 'CG' is green
+        elif mode == 2:
+            clrs =  {'A':'red','T':'green','G':'orange','C':'blue','-':'white'}
+            colors = [clrs[i] for i in text]
+        
+        pn.state.cache[cache_key] = colors
+        return colors
+
+    colors = get_colors(mode=current_coloring_mode)    
     N = len(seqs[0])
     S = len(seqs)    
-    width = .4
 
     x = np.arange(1,N+1)
     y = np.arange(S-1,-1,-1)
@@ -476,7 +496,7 @@ def view_alignment():
     #now we can create the ColumnDataSource with all the arrays
     
     source = ColumnDataSource(data=dict(x=gx, y=gy, recty=recty, text=text, colors=colors))
-    plot_height = len(seqs)*15+50
+    plot_height = len(seqs)*15 + 50
     x_range = Range1d(0,N+1, bounds='auto', min_interval=50)
     if N>100:
         viewlen=100
@@ -513,33 +533,15 @@ def view_alignment():
     p = gridplot([[p_head],[p_detail]], toolbar_location='below')
 
     @pn.depends(coloring_mode_btn.param.value, watch=True)
-    def update_color(coloring_mode_btn):
-        global current_colors_mode
+    def update_color(change_coloring_mode):
+        global current_coloring_mode
 
-        current_colors_mode = coloring_mode_btn
-        colors = get_colors(seqs, coloring_mode_btn)
+        current_coloring_mode = change_coloring_mode
+
+        colors = get_colors(mode=change_coloring_mode)
         source.data.update(colors=colors)
 
     return p
-
-def get_colors(seqs, mode=1):
-    """Make colors for bases in sequence. Color 'C' and 'G' green if they form 'CG'."""
-    text = [i for s in list(seqs) for i in s]
-
-    if mode == 1:
-        clrs = {'A':'white','T':'white','G':'white','C':'white','-':'white'}
-        colors = [clrs[i] for i in text]
-        # Re-color 'C' and 'G' in 'CG' to green
-        for i in range(len(colors) - 1):
-            if text[i] == 'C' and text[i+1] == 'G':
-                colors[i] = 'green'   # 'C' in 'CG' is green
-                colors[i+1] = 'green'  # 'G' in 'CG' is green
-        return colors
-    elif mode == 2:
-        clrs =  {'A':'red','T':'green','G':'orange','C':'blue','-':'white'}
-        colors = [clrs[i] for i in text]
-        return colors
-
 
 
 w1 = pnw.RadioBoxGroup(name='Gap method', options={'Define minimum gap': 1, 'Set target average gap (optimize min gap)': 2})
@@ -584,38 +586,15 @@ def download_alignment():
     return BytesIO(fasta_bytes)
 
 
-global fileDownloadAdded
-fileDownloadAdded = False
 download_btn = pnw.FileDownload(callback=download_alignment, filename='alignment.fasta', button_type='primary', label='Download alignment')
-
-def test():
-    p1 = figure(height = 400, width = 400, title = 'My Line Plot')
-    p1.line([1, 2, 3, 4, 5], [6, 7, 2, 4, 5], line_width = 2, color = 'navy', alpha = 0.5)
-    
-    p2 = figure(height=200, width=200)
-    p2.line([1, 2, 3, 4, 5], [5, 2, 3, 7, 6], line_width=2, color='red', alpha=0.5)
-
-    p3 = figure(height=200, width=200)
-    p3.line([1, 2, 3, 4, 5], [2, 5, 8, 2, 7], line_width=2, color='green', alpha=0.5)
-
-    p4 = figure(height=200, width=200)
-    p4.line([1, 2, 3, 4, 5], [7, 2, 4, 9, 1], line_width=2, color='black', alpha=0.5)
-
-    # Make a grid
-    grid = gridplot([[p1, p2], [p3, p4]])
-    return grid
-
-global current_colors_mode
-current_colors_mode = 1
 
 successful_load_dummy = pnw.Checkbox(value=False, visible=False)
 
 file_input = pnw.FileInput(accept='.fasta,.aln')
-fasta_bytes = file_input.param.value
 # Define function to load FASTA file and display sequences
-@pn.depends(fasta_bytes)
+@pn.depends(file_input.param.value)
 def load_fasta(fasta_bytes):
-    global sequences, current_coloring_mode, fileDownloadAdded, df
+    global sequences, current_coloring_mode, df
 
     sequences = []
     # Reset the dataframe
@@ -630,10 +609,7 @@ def load_fasta(fasta_bytes):
         fasta_io = StringIO(fasta_string)
         # Parse the sequences
         sequences = list(SeqIO.parse(fasta_io, "fasta"))
-        
-        seqs.value = sequences
-        coloring_mode_btn.value = current_coloring_mode
-        
+                
         sequence_lengths = [len(sequence) for sequence in sequences]
         if len(sequences) > 1 and len(set(sequence_lengths)) > 1:
 
@@ -661,22 +637,22 @@ def load_fasta(fasta_bytes):
         
         modifiers.visible = True
         top_message.visible = False
-        accessory.append(coloring_mode_btn)
+
+        if coloring_mode_btn not in accessory:
+            accessory.append(coloring_mode_btn)
 
         download_btn.filename = f"{sequences[0].id}-recoding-aln.fasta"
-        if len(sequences) > 1 and not fileDownloadAdded:
+        if len(sequences) > 1 and download_btn not in accessory:
             accessory.append(download_btn)
-            fileDownloadAdded = True
-        elif len(sequences) <= 1 and fileDownloadAdded:
+        elif len(sequences) <= 1 and download_btn in accessory:
             accessory.remove(download_btn)
-            fileDownloadAdded = False
+
         
         successful_load_dummy.value = not successful_load_dummy.value     
 
        
 def mutate(event, gap_method, option_value, protection_start_value, protection_end_value, identifier, A_rich):
     global sequences
-    global fileDownloadAdded
 
     original_id = sequences[0].id
     
@@ -697,14 +673,12 @@ def mutate(event, gap_method, option_value, protection_start_value, protection_e
         sequences.append(SeqRecord(gene.new_sequence, id=identifier, name=identifier, description=description))
 
 
-    bokeh_pane.object = view_alignment() #sequences, colors_mode=current_colors_mode
+    bokeh_pane.object = view_alignment()
 
-    if len(sequences) > 1 and not fileDownloadAdded:
+    if len(sequences) > 1 and download_btn not in accessory:
         accessory.append(download_btn)
-        fileDownloadAdded = True
-    elif len(sequences) <= 1 and fileDownloadAdded:
+    elif len(sequences) <= 1 and download_btn in accessory:
         accessory.remove(download_btn)
-        fileDownloadAdded = False
     
     if gap_method == 1:
         mutation_settings = f"Minimum CpG gap set as {option_value}. "
@@ -728,7 +702,10 @@ def mutate(event, gap_method, option_value, protection_start_value, protection_e
 
     update_table(average_CpG_gap=gene.calculate_average_gap(), sequence_id=identifier, CpG_count=gene.count_CpGs(gene.new_sequence), mutation_settings=mutation_settings.strip(), CpG_abundance_change=f"{CpG_change}%", A_abundance_change=f"{A_change}%")
 
+
 def on_mutate_btn_click(event):
+    global sequences
+
     gap_method = w1.value
     option_value = w2.value
 
@@ -742,7 +719,7 @@ def on_mutate_btn_click(event):
         w3_end.value = 0
     protection_start_value = w3_start.value
     protection_end_value = w3_end.value
-    identifier = new_seq_id.value.strip()
+    identifier = new_seq_id.value_input.strip()
 
     if A_rich_toggle.value == 1:
         A_rich = True
