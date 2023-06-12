@@ -167,3 +167,5 @@ outputs/
 *.fa
 *.png
 *.ipynb
+
+minimal*.py
