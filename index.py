@@ -4,6 +4,7 @@ from io import StringIO, BytesIO
 import sys, copy, math
 
 from Bio import SeqIO
+from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
 from bokeh.plotting import figure
@@ -550,12 +551,12 @@ w2 = pnw.IntInput(start=0, placeholder='Your value', sizing_mode='stretch_width'
 w3_start = pnw.IntInput(start=0, placeholder='Initial length', sizing_mode='stretch_width')
 w3_end = pnw.IntInput(start=0, placeholder='Terminal length', sizing_mode='stretch_width')
 # Define labels
-label_x = pn.pane.HTML('Initial', styles={'width': '100%', 'text-align': 'center'})
-label_y = pn.pane.HTML('Terminal', styles={'width': '100%', 'text-align': 'center'})
+label_1 = pn.pane.HTML('Initial', styles={'width': '100%', 'text-align': 'center'})
+label_2 = pn.pane.HTML('Final', styles={'width': '100%', 'text-align': 'center'})
 
 # Define GridBox layout
 w3_packaging_signals = pn.GridBox(
-    label_x, label_y,
+    label_1, label_2,
     w3_start, w3_end,
     ncols=2, sizing_mode='stretch_width'
 )
@@ -564,7 +565,7 @@ new_seq_id = pnw.TextInput(placeholder='Enter an identifier', sizing_mode='stret
 mutate_btn = pnw.Button(name='Mutate', button_type='primary')
 A_rich_toggle = pnw.RadioButtonGroup(name='A-rich', options={'Yes': 1, 'No': 2}, value=2, button_type='default', button_style='solid')
 
-modifiers = pn.FlexBox('# Mutation settings', '## CpG gap options', w1, w2, '## Protect terminal nucleotides', w3_packaging_signals, '## Increase A-richness in remaining codons', A_rich_toggle, '## Name the mutated sequence', new_seq_id, pn.FlexBox(mutate_btn, styles={'margin-top': '10px'}, justify_content='center'), flex_direction='column', styles={'flex-wrap': 'wrap'})
+modifiers = pn.FlexBox('# Mutation settings', '## CpG gap options', w1, w2, '## Protect terminal nucleotides', w3_packaging_signals, '## Increase A-richness in remaining codons', A_rich_toggle, '## Give a unique sequence name', new_seq_id, pn.FlexBox(mutate_btn, styles={'margin-top': '10px'}, justify_content='center'), flex_direction='column', styles={'flex-wrap': 'wrap'})
 modifiers.visible = False
 
 footer = pn.pane.HTML("""
@@ -587,8 +588,51 @@ def download_alignment():
 
 
 download_btn = pnw.FileDownload(callback=download_alignment, filename='alignment.fasta', button_type='primary', label='Download alignment')
-
 successful_load_dummy = pnw.Checkbox(value=False, visible=False)
+
+def load_sample(event):
+    global sequences, current_coloring_mode, df
+
+    sequences = []
+    # Reset the dataframe
+    df = pd.DataFrame(columns=['Name', 'Average CpG gap', 'Mutation settings', 'CpG count', 'CpG change', 'A change'])
+    df.index.name = 'Index'
+
+    sample_string = "AGGGGAAGTGACATAGCAGGAACTACTAGTACCCTTCAGGAACAAATAGGATGGATGACACATAATCCACCTATCC\
+CAGTAGGAGAAATCTATAAAAGATGGATAATCCTGGGATTAAATAAAATAGTAAGAATGTATAGCCCTACCAGCAT\
+TCTGGACATAAGACAAGGACCAAAGGAACCCTTTAGAGACTATGTAGACCGATTCTATAAAACTCTAAGAGCCGAG\
+CAAGCTTCACAAGAGGTAAAAAATTGGATGACAGAAACCTTGTTGGTCCAAAATGCGAACCCAGATTGTAAGACTA\
+TTTTAAAAGCATTGGGACCAGGAGCGACACTAGAAGAAATGATGACAGCATGTCAGGGAGTGGGGGGACCCGGCCA\
+TAAAGCAAGAGTTTTGGCTGAAGCAATGAGCCAAGTAACAAATCCAGCTACCATAATGATACAGAAAGGCAATTTT\
+AGGAACCAAAGAAAGACTGTTAAGTGTTTCAATTGTGGCAAAGAAGGGCACATAGCC"
+    sample_Seq = Seq(sample_string)
+    sample_record = SeqRecord(sample_Seq, id="HIV-1 Gag", name="HIV-1 Gag", description="Sample sequence from Gag of HIV-1")
+    sequences.append(sample_record)
+
+    gene = Gene(sample_string, gap_method=None)
+    update_table(average_CpG_gap=gene.original_average_gap, sequence_id=sample_record.id, CpG_count=gene.count_CpGs(gene.original_sequence))
+
+    # Display the sequences
+    p = view_alignment()
+    bokeh_pane.object = p
+    
+    modifiers.visible = True
+    top_message.visible = False
+
+    if coloring_mode_btn not in accessory:
+        accessory.append(coloring_mode_btn)
+
+    download_btn.filename = f"{sequences[0].id}-recoding-aln.fasta"
+    if len(sequences) > 1 and download_btn not in accessory:
+        accessory.append(download_btn)
+    elif len(sequences) <= 1 and download_btn in accessory:
+        accessory.remove(download_btn)
+
+    
+    successful_load_dummy.value = not successful_load_dummy.value  
+
+load_sample_btn = pnw.Button(name='Example sequence', button_type='default', styles={'margin-top': '1em', 'margin-bottom': '1em'})
+load_sample_btn.on_click(load_sample)
 
 file_input = pnw.FileInput(accept='.fasta,.aln')
 # Define function to load FASTA file and display sequences
@@ -618,6 +662,8 @@ def load_fasta(fasta_bytes):
 
         for sequence in sequences:
             sequence.seq = sequence.seq.upper()
+            # Turn U's into T's for convenience
+            sequence.seq = sequence.seq.back_transcribe()
 
          # Add data to the DataFrame for each sequence
         for sequence in sequences:
@@ -658,7 +704,7 @@ def mutate(event, gap_method, option_value, protection_start_value, protection_e
     
     if gap_method == 1:
         gene = Gene(sequences[0].seq, gap_method, minimum_CpG_gap=option_value, packaging_signal_length_beginning=protection_start_value, packaging_signal_length_end=protection_end_value)
-        description = f"Recoded {original_id} sequence to increase CpG's with a minimum gap of {option_value}"
+        description = f"Synonymously recoded {original_id} sequence to increase CpG's with a minimum gap of {option_value}"
         if A_rich == True:
             gene.mutate_A_rich()
             description = f"Recoded {original_id} sequence to increase CpG's with a minimum gap of {option_value}. Mutated remaining codons to A-rich versions, if possible."
@@ -666,7 +712,7 @@ def mutate(event, gap_method, option_value, protection_start_value, protection_e
     elif gap_method == 2:
         gene = Gene(sequences[0].seq, gap_method, minimum_CpG_gap=None, desired_CpG_gap=option_value, packaging_signal_length_beginning=protection_start_value, packaging_signal_length_end=protection_end_value)
         resultant_avg_gap = round(gene.calculate_average_gap())
-        description = f"Recoded {original_id} sequence to increase CpG's at an average gap of {resultant_avg_gap}"
+        description = f"Synonymously recoded {original_id} sequence to increase CpG's at an average gap of {resultant_avg_gap}"
         if A_rich == True:
             gene.mutate_A_rich()
             description = f"Recoded {original_id} sequence to increase CpG's at an average gap of {resultant_avg_gap}. Mutated remaining codons to A-rich versions, if possible."
@@ -740,14 +786,17 @@ def on_mutate_btn_click(event):
             mutate(event=event, gap_method=gap_method, option_value=option_value, protection_start_value=protection_start_value, protection_end_value=protection_end_value, identifier=identifier, A_rich=A_rich)
 
 
-top = pn.FlexBox('## Load a new FASTA File', file_input, successful_load_dummy, justify_content='center')
+top = pn.FlexBox('## Load a new FASTA File', file_input, load_sample_btn, successful_load_dummy, justify_content='space-evenly')
 top_message = pn.pane.Markdown("""
+                           ### This app applies synonymous mutations to add CpG dinucleotides into DNA, according to user-specified constraints.\
+                           It can also make the remaining sequence more A-rich, while maintaining the amino acid sequence.
+
                            Please load an in-frame sequence, of a length divisible by 3.
 
                            If loading a Fasta file with more than one sequence, ensure that sequence lengths are equal.
 
                            In such case, the sequence at the top of the file will be used in the recoding algorithm.
-                           """)
+                           """, max_width=600)
 accessory = pn.FlexBox(justify_content='space-between')
 
 visualization = pn.FlexBox(top, top_message, load_fasta, bokeh_pane, accessory, flex_direction='column', align_items='center', sizing_mode='stretch_width')
