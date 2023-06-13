@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from io import StringIO, BytesIO
 import sys, copy, math
+import datetime
 
 from Bio import SeqIO
 from Bio.Seq import Seq
@@ -221,19 +222,24 @@ class Gene:
     # Finds which codons can be synonymously mutated to give more CpG's. Such codons must have at least a minimum_CpG_gap nucleotides long gap between another CpG
     def determine_changeable_CpG(self):
         for codon in self.current_codons:
-            if not codon.has_cg and not codon.protected and (codon.sequence in DIC or (codon.sequence in DIC_for_split and codon.next_codon[0] == 'G')):
+            if not codon.has_cg and not codon.protected:
+                potential_new_seq = None
                 if codon.sequence in DIC:
-                    codon.potential_new_seq = DIC[codon.sequence]
-                else:
-                    codon.potential_new_seq = DIC_for_split[codon.sequence]
+                    potential_new_seq = DIC[codon.sequence]
+                elif codon.sequence in DIC_for_split and codon.next_codon[0] == 'G':
+                    potential_new_seq = DIC_for_split[codon.sequence]
                 
-                for i in range(self.sequence_length):
-                    if i <= self.minimum_CpG_gap and self.original_sequence[:i+(self.minimum_CpG_gap_extra+2)].find('CG') == -1 and codon.get_cg_position(codon.potential_new_seq) == i:
-                        codon.mutable = True
-                    if i > self.minimum_CpG_gap and self.original_sequence[i-(self.minimum_CpG_gap_extra):i+(self.minimum_CpG_gap_extra+2)].find('CG') == -1 and codon.get_cg_position(codon.potential_new_seq) == i:
-                        codon.mutable = True
-            if codon.mutable:
-                self.mutable_positions.append(codon.get_cg_position(codon.potential_new_seq))
+                if potential_new_seq is not None:
+                    codon.potential_new_seq = potential_new_seq
+                    cg_position = codon.get_cg_position(potential_new_seq)
+                    for i in range(self.sequence_length):
+                        search_start = max(i - self.minimum_CpG_gap_extra, 0)
+                        search_end = i + self.minimum_CpG_gap_extra + 2
+                        if cg_position == i and 'CG' not in self.original_sequence[search_start: search_end]:
+                            codon.mutable = True
+                            if codon.mutable:
+                                self.mutable_positions.append(cg_position)
+                            break
         self.mutable_positions.sort()
 
     # Applies synonymous mutations in a 5' to 3' direction. Ensures there are sufficient gaps between new CpG's
@@ -268,7 +274,7 @@ class Gene:
     def find_desired_gap(self, desired_gap, no_print = False):
         def create_sequence(min_gap):
             self.minimum_CpG_gap = min_gap
-            self.current_cg_positions = self.original_cg_positions.copy()
+            self.current_cg_positions = self.original_cg_positions.copy()       
             self.current_codons = copy.deepcopy(self.original_codons)
             self.mutable_positions = []
             self.determine_changeable_CpG()
