@@ -222,24 +222,19 @@ class Gene:
     # Finds which codons can be synonymously mutated to give more CpG's. Such codons must have at least a minimum_CpG_gap nucleotides long gap between another CpG
     def determine_changeable_CpG(self):
         for codon in self.current_codons:
-            if not codon.has_cg and not codon.protected:
-                potential_new_seq = None
+            if not codon.has_cg and not codon.protected and (codon.sequence in DIC or (codon.sequence in DIC_for_split and codon.next_codon[0] == 'G')):
                 if codon.sequence in DIC:
-                    potential_new_seq = DIC[codon.sequence]
-                elif codon.sequence in DIC_for_split and codon.next_codon[0] == 'G':
-                    potential_new_seq = DIC_for_split[codon.sequence]
-                
-                if potential_new_seq is not None:
-                    codon.potential_new_seq = potential_new_seq
-                    cg_position = codon.get_cg_position(potential_new_seq)
-                    for i in range(self.sequence_length):
-                        search_start = max(i - self.minimum_CpG_gap_extra, 0)
-                        search_end = i + self.minimum_CpG_gap_extra + 2
-                        if cg_position == i and 'CG' not in self.original_sequence[search_start: search_end]:
-                            codon.mutable = True
-                            if codon.mutable:
-                                self.mutable_positions.append(cg_position)
-                            break
+                    codon.potential_new_seq = DIC[codon.sequence]
+                else:
+                    codon.potential_new_seq = DIC_for_split[codon.sequence]
+
+                cg_position = codon.get_cg_position(codon.potential_new_seq)
+                if cg_position is not None:
+                    search_start = max(cg_position - self.minimum_CpG_gap_extra, 0)
+                    search_end = cg_position + self.minimum_CpG_gap_extra + 2
+                    if 'CG' not in self.original_sequence[search_start: search_end]:
+                        codon.mutable = True
+                        self.mutable_positions.append(cg_position)
         self.mutable_positions.sort()
 
     # Applies synonymous mutations in a 5' to 3' direction. Ensures there are sufficient gaps between new CpG's
