@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 from io import StringIO, BytesIO
 import sys, copy, math
-import datetime
 
 from Bio import SeqIO
 from Bio.Seq import Seq
@@ -295,45 +294,9 @@ class Gene:
             if abs(avg_gap - desired_gap) < smallest_diff:
                 smallest_diff = abs(avg_gap - desired_gap)
                 closest_gap = mid
-        
         if no_print == False:
             print(f"A minimum gap of {closest_gap} was found to result in the closest match to your desired gap")
         return closest_gap
-
-    def find_min_cv_gap(self, min_avg_bound, max_avg_bound):
-        def create_sequence(min_gap):
-            self.minimum_CpG_gap = min_gap
-            self.current_cg_positions = self.original_cg_positions.copy()
-            self.current_codons = copy.deepcopy(self.original_codons)
-            self.mutable_positions = []
-            self.determine_changeable_CpG()
-            self.mutate_CpG()
-
-        best_gap = max_avg_bound
-        smallest_cv = float('inf')
-
-
-        for gap in range(min_avg_bound, max_avg_bound + 1):
-            create_sequence(gap)
-
-            std_gap = self.calculate_average_gap("current", st_dev=True)
-            avg_gap = self.calculate_average_gap()
-
-            # calculate the coefficient of variation
-            if avg_gap != 0:  # Avoid division by zero
-                cv = std_gap / avg_gap
-            else:
-                cv = float('inf')
-
-            print(f"{gap} {avg_gap} {cv} {self.count_CpGs(self.new_sequence)}")
-            if min_avg_bound <= avg_gap <= max_avg_bound and cv < smallest_cv:
-                smallest_cv = cv
-                best_gap = gap
-        
-
-        print(f"A minimum gap of {best_gap} was found to result in the smallest coefficient of variation of the gap, {cv}.")
-        return best_gap
-
 
     # Translates a sequence into amino acids
     def translate_sequence(self, sequence):
@@ -447,6 +410,7 @@ class Gene:
         print("")
 
 coloring_mode_btn = pnw.RadioButtonGroup(name='Coloring mode', options={"Highlight CpG's": 1, 'Color all nucleotides': 2}, button_style='solid', button_type='light')
+coloring_mode_btn.visible = False
 current_coloring_mode = 1
 def view_alignment():
     """Bokeh sequence alignment view"""
@@ -482,7 +446,7 @@ def view_alignment():
         pn.state.cache[cache_key] = colors
         return colors
 
-    colors = get_colors(mode=current_coloring_mode)    
+    colors = get_colors(mode=current_coloring_mode)
     N = len(seqs[0])
     S = len(seqs)    
 
@@ -539,7 +503,6 @@ def view_alignment():
         global current_coloring_mode
 
         current_coloring_mode = change_coloring_mode
-
         colors = get_colors(mode=change_coloring_mode)
         source.data.update(colors=colors)
 
@@ -589,10 +552,11 @@ def download_alignment():
 
 
 download_btn = pnw.FileDownload(callback=download_alignment, filename='alignment.fasta', button_type='primary', label='Download alignment')
+download_btn.visible = False
 successful_load_dummy = pnw.Checkbox(value=False, visible=False)
 
 def load_sample(event):
-    global sequences, current_coloring_mode, df
+    global sequences, current_coloring_mode, df, download_btn
 
     sequences = []
     # Reset the dataframe
@@ -620,14 +584,14 @@ AGGAACCAAAGAAAGACTGTTAAGTGTTTCAATTGTGGCAAAGAAGGGCACATAGCC"
     modifiers.visible = True
     top_message.visible = False
 
-    if coloring_mode_btn not in accessory:
-        accessory.append(coloring_mode_btn)
+    if coloring_mode_btn.visible == False:
+        coloring_mode_btn.visible = True
 
     download_btn.filename = f"{sequences[0].id}-recoding-aln.fasta"
-    if len(sequences) > 1 and download_btn not in accessory:
-        accessory.append(download_btn)
-    elif len(sequences) <= 1 and download_btn in accessory:
-        accessory.remove(download_btn)
+    if len(sequences) > 1 and download_btn.visible == False:
+        download_btn.visible = True
+    elif len(sequences) <= 1 and download_btn.visible == True:
+        download_btn.visible = False
 
     
     successful_load_dummy.value = not successful_load_dummy.value  
@@ -639,7 +603,7 @@ file_input = pnw.FileInput(accept='.fasta,.aln')
 # Define function to load FASTA file and display sequences
 @pn.depends(file_input.param.value)
 def load_fasta(fasta_bytes):
-    global sequences, current_coloring_mode, df
+    global sequences, current_coloring_mode, df, download_btn
 
     sequences = []
     # Reset the dataframe
@@ -685,21 +649,21 @@ def load_fasta(fasta_bytes):
         modifiers.visible = True
         top_message.visible = False
 
-        if coloring_mode_btn not in accessory:
-            accessory.append(coloring_mode_btn)
+        if coloring_mode_btn.visible == False:
+            coloring_mode_btn.visible = True
 
         download_btn.filename = f"{sequences[0].id}-recoding-aln.fasta"
-        if len(sequences) > 1 and download_btn not in accessory:
-            accessory.append(download_btn)
-        elif len(sequences) <= 1 and download_btn in accessory:
-            accessory.remove(download_btn)
+        if len(sequences) > 1 and download_btn.visible == False:
+            download_btn.visible = True
+        elif len(sequences) <= 1 and download_btn.visible == True:
+            download_btn.visible = False
 
         
         successful_load_dummy.value = not successful_load_dummy.value     
 
        
 def mutate(event, gap_method, option_value, protection_start_value, protection_end_value, identifier, A_rich):
-    global sequences
+    global sequences, download_btn
 
     original_id = sequences[0].id
     
@@ -711,7 +675,7 @@ def mutate(event, gap_method, option_value, protection_start_value, protection_e
             description = f"Recoded {original_id} sequence to increase CpG's with a minimum gap of {option_value}. Mutated remaining codons to A-rich versions, if possible."
         sequences.append(SeqRecord(gene.new_sequence, id=identifier, name=identifier, description=description))
     elif gap_method == 2:
-        gene = Gene(sequences[0].seq, gap_method, minimum_CpG_gap=None, desired_CpG_gap=option_value, packaging_signal_length_beginning=protection_start_value, packaging_signal_length_end=protection_end_value)
+        gene = Gene(sequences[0].seq, gap_method, minimum_CpG_gap=None, desired_CpG_gap=option_value, packaging_signal_length_beginning=protection_start_value, packaging_signal_length_end=protection_end_value) 
         resultant_avg_gap = round(gene.calculate_average_gap())
         description = f"Synonymously recoded {original_id} sequence to increase CpG's at an average gap of {resultant_avg_gap}"
         if A_rich == True:
@@ -722,10 +686,11 @@ def mutate(event, gap_method, option_value, protection_start_value, protection_e
 
     bokeh_pane.object = view_alignment()
 
-    if len(sequences) > 1 and download_btn not in accessory:
-        accessory.append(download_btn)
-    elif len(sequences) <= 1 and download_btn in accessory:
-        accessory.remove(download_btn)
+
+    if len(sequences) > 1 and download_btn.visible == False:
+        download_btn.visible = True
+    elif len(sequences) <= 1 and download_btn.visible == True:
+        download_btn.visible = False
     
     if gap_method == 1:
         mutation_settings = f"Minimum CpG gap set as {option_value}. "
@@ -798,7 +763,7 @@ top_message = pn.pane.Markdown("""
 
                            In such case, the sequence at the top of the file will be used in the recoding algorithm.
                            """, max_width=600)
-accessory = pn.FlexBox(justify_content='space-between')
+accessory = pn.FlexBox(coloring_mode_btn, download_btn, justify_content='space-between')
 
 visualization = pn.FlexBox(top, top_message, load_fasta, bokeh_pane, accessory, flex_direction='column', align_items='center', sizing_mode='stretch_width')
 
