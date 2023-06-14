@@ -1,5 +1,5 @@
 const appName = 'SynRecoder'
-const appCacheName = 'SynRecoder-2d9f90c1b9eb4e4f947d694697383a75';
+const appCacheName = 'SynRecoder-f9ffb7be0c314642a3af602d0d743f86';
 
 const preCacheFiles = ['images/favicon.ico', 'images/icon-vector.svg', 'images/icon-32x32.png', 'images/icon-192x192.png', 'images/icon-512x512.png', 'images/apple-touch-icon.png', 'images/index_background.png'];
 
