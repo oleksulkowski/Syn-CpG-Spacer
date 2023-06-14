@@ -831,7 +831,6 @@ def load_sample(event):
         "TAAAGCAAGAGTTTTGGCTGAAGCAATGAGCCAAGTAACAAATCCAGCTACCATAATGATACAGAAAGGCAATTTT"
         "AGGAACCAAAGAAAGACTGTTAAGTGTTTCAATTGTGGCAAAGAAGGGCACATAGCC"
     )
-    print(sample_string)
     sample_Seq = Seq(sample_string)
     sample_record = SeqRecord(
         sample_Seq,
