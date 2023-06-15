@@ -870,6 +870,7 @@ def load_sample(event):
         ]
     )
     df.index.name = "Index"
+    df.index = df.index + 1
 
     sample_string = (
         "AGGGGAAGTGACATAGCAGGAACTACTAGTACCCTTCAGGAACAAATAGGATGGATGACACATAATCCACCTATCC"
@@ -880,36 +881,20 @@ def load_sample(event):
         "TAAAGCAAGAGTTTTGGCTGAAGCAATGAGCCAAGTAACAAATCCAGCTACCATAATGATACAGAAAGGCAATTTT"
         "AGGAACCAAAGAAAGACTGTTAAGTGTTTCAATTGTGGCAAAGAAGGGCACATAGCC"
     )
-    sample_Seq = Seq(sample_string)
     sample_record = SeqRecord(
-        sample_Seq,
-        id="HIV-1 Gag",
-        name="HIV-1 Gag",
-        description="Sample sequence from Gag of HIV-1",
-    )
-    sequences.append(sample_record)
-
-    gene = Gene(sample_string, gap_method=None)
-    update_table(
-        average_CpG_gap=gene.original_average_gap,
-        sequence_id=sample_record.id,
-        CpG_count=gene.count_CpGs(gene.original_sequence),
+        Seq(sample_string),
+        id="Gag",
+        name="Gag",
+        description="Sample Gag sequence of HIV-1",
     )
 
-    # Display the sequences
-    p = view_alignment()
-    bokeh_pane.object = p
+    def encode_fasta_as_bytes(seq_record):
+        fasta_stream = StringIO()
+        SeqIO.write(seq_record, fasta_stream, "fasta")
+        fasta_content = fasta_stream.getvalue()
+        return fasta_content.encode("utf-8")
 
-    modifiers.visible = True
-    top_message.visible = False
-
-    if coloring_mode_btn.visible is False:
-        coloring_mode_btn.visible = True
-
-    download_btn.filename = f"{sequences[0].id}-recoding-aln.fasta"
-    download_btn.visible = len(sequences) > 1
-
-    successful_load_dummy.value = not successful_load_dummy.value
+    file_input.value = encode_fasta_as_bytes(sample_record)
 
 
 load_sample_btn = pnw.Button(
@@ -923,9 +908,9 @@ file_input = pnw.FileInput(accept=".fasta,.aln")
 
 
 # Define function to load FASTA file and display sequences
-@pn.depends(file_input.param.value)
-def load_fasta(fasta_bytes):
-    global sequences, current_coloring_mode, df, download_btn
+def load_fasta(event):
+    global sequences, current_coloring_mode, df
+    global top, download_btn, file_input_watcher, file_input
 
     sequences = []
     # Reset the dataframe
@@ -940,7 +925,9 @@ def load_fasta(fasta_bytes):
         ]
     )
     df.index.name = "Index"
+    df.index = df.index + 1
 
+    fasta_bytes = event.new
     # Get the loaded file bytes
     if fasta_bytes:
         # Decode the bytes to a string
@@ -989,6 +976,16 @@ def load_fasta(fasta_bytes):
         download_btn.visible = len(sequences) > 1
 
         successful_load_dummy.value = not successful_load_dummy.value
+
+        file_input.param.unwatch(file_input_watcher)
+        new_file_input = pnw.FileInput(accept=".fasta,.aln")
+        new_file_input_watcher = new_file_input.param.watch(load_fasta, "value")
+        top[1] = new_file_input
+        file_input = new_file_input
+        file_input_watcher = new_file_input_watcher
+
+
+file_input_watcher = file_input.param.watch(load_fasta, "value")
 
 
 def mutate(
@@ -1162,7 +1159,6 @@ accessory = pn.FlexBox(coloring_mode_btn, download_btn, justify_content="space-b
 visualization = pn.FlexBox(
     top,
     top_message,
-    load_fasta,
     bokeh_pane,
     accessory,
     flex_direction="column",
@@ -1199,6 +1195,7 @@ def update_table(
     # Concatenate new data to existing DataFrame
     df = pd.concat([df, data], ignore_index=True)
     df.index.name = "Index"
+    df.index = df.index + 1
     df.fillna("NA", inplace=True)
     tabulator.value = df
 
@@ -1214,6 +1211,7 @@ df = pd.DataFrame(
     ]
 )
 df.index.name = "Index"
+df.index = df.index + 1
 formatter = {"Mutation settings": {"type": "textarea"}}
 tabulator = pnw.Tabulator(df, formatters=formatter, layout="fit_data", disabled=True)
 
