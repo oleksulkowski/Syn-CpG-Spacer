@@ -1,4 +1,4 @@
-importScripts("https://cdn.jsdelivr.net/pyodide/v0.23.0/full/pyodide.js");
+importScripts("https://cdn.jsdelivr.net/pyodide/v0.23.4/pyc/pyodide.js");
 
 function sendPatch(patch, buffers, msg_id) {
   self.postMessage({
@@ -15,7 +15,7 @@ async function startApplication() {
   self.pyodide.globals.set("sendPatch", sendPatch);
   console.log("Loaded!");
   await self.pyodide.loadPackage("micropip");
-  const env_spec = ['markdown-it-py<3', 'https://cdn.holoviz.org/panel/1.1.0/dist/wheels/bokeh-3.1.1-py3-none-any.whl', 'https://cdn.holoviz.org/panel/1.1.0/dist/wheels/panel-1.1.0-py3-none-any.whl', 'pyodide-http==0.2.1', 'Bio', 'numpy', 'pandas']
+  const env_spec = ['https://cdn.holoviz.org/panel/1.2.1/dist/wheels/bokeh-3.2.1-py3-none-any.whl', 'https://cdn.holoviz.org/panel/1.2.1/dist/wheels/panel-1.2.1-py3-none-any.whl', 'pyodide-http==0.2.1', 'Bio', 'numpy', 'pandas']
   for (const pkg of env_spec) {
     let pkg_name;
     if (pkg.endsWith('.whl')) {
@@ -819,7 +819,22 @@ modifiers = pn.FlexBox(
 modifiers.visible = False
 
 footer = pn.pane.HTML(
-    "Aleksander Sułkowski 2023",
+    """
+    Aleksander Sułkowski 2023 <br>
+    <a
+        id="cy-effective-orcid-url"
+        class="underline"
+        href="https://orcid.org/0000-0002-0624-428X"
+        target="orcid.widget"
+        rel="me noopener noreferrer"
+        style="vertical-align: top">
+        <img
+            src="https://orcid.org/sites/default/files/images/orcid_16x16.png"
+            style="width: 1em; margin-inline-start: 0.5em"
+            alt="ORCID iD icon"/>
+        https://orcid.org/0000-0002-0624-428X
+    </a>
+    """,
     styles={
         "width": "100%",
         "text-align": "center",
