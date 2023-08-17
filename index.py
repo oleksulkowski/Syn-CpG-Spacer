@@ -771,7 +771,7 @@ modifiers.visible = False
 
 footer = pn.pane.HTML(
     """
-    Aleksander Sułkowski 2023 <br>
+    Aleksander Sułkowski 2023. <br>
     <a
         id="cy-effective-orcid-url"
         class="underline"
