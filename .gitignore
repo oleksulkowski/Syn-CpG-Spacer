@@ -159,15 +159,13 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-backups/
-old/
-outputs/
+
 *.fasta
 *.faa
 *.fa
 *.png
 *.ipynb
 
-minimal*.py
-.*
-setup.cfg
+.flake8
+.conda
+.vscode
