@@ -373,14 +373,22 @@ class Gene:
     def enforce_packaging_signal(self, codon):
         mutation_positions = codon.get_mutation_positions()
         comparison_results = []
+
+        # Edge case
+        if self.packaging_signal_length_end > 1:
+            end_length = self.packaging_signal_length_end + 1
+        else:
+            end_length = self.packaging_signal_length_end
+
+        # True if can mutate, false if can't
         for mutation_position in mutation_positions:
             result = (
                 (self.packaging_signal_length_beginning - 1)
                 < mutation_position
-                < (self.sequence_length - self.packaging_signal_length_end)
+                < (self.sequence_length - end_length)
             )
             comparison_results.append(result)
-            return all(comparison_results)
+        return all(comparison_results)
 
     # Applies mutations into the object to create a new sequence
     def load_new_sequence(self):
@@ -417,6 +425,77 @@ class Gene:
                         self.mutable_positions.append(cg_position)
         self.mutable_positions.sort()
 
+    # Translates a sequence into amino acids
+    def translate_sequence(self, sequence):
+        protein = []
+        start = 0
+        while start + 2 < len(sequence):
+            codon = sequence[start : start + 3]
+            protein.append(dna_to_pro[codon][0])
+            start += 3
+        return "".join(protein)
+
+    # If there is a difference between the original amino acid sequence and the new one,
+    # returns the first difference in amino acids that it finds
+    def first_difference(self, str1, str2):
+        for a, b in zip(str1, str2):
+            if a != b:
+                return a + b
+
+    def check_synonymity(self):
+        translated1 = self.translate_sequence(self.original_sequence)
+        translated2 = self.translate_sequence(self.new_sequence)
+
+        # Checks if the original amino acid sequence is different to the new one.
+        if translated1 != translated2:
+            raise Exception(
+                "Code error: Non-synonymous mutations were introduced!\\n"
+                + self.first_difference(translated1, translated2)
+            )
+
+    # Check if minimum gaps are respected. Subtract 2 because we're looking at the gap
+    def check_minimum_gaps(self):
+        for i in range(1, len(self.current_cg_positions)):
+            diff = abs(
+                self.current_cg_positions[i] - self.current_cg_positions[i - 1] - 2
+            )
+            if diff < self.minimum_CpG_gap and (
+                (self.current_cg_positions[i] or self.current_cg_positions[i - 1])
+                not in self.original_cg_positions
+            ):
+                raise Exception(
+                    f"Code error: The minimum gap between consecutive CpGs was not "
+                    f"preserved! Gap: {diff} at {self.current_cg_positions[i]}"
+                )
+
+    # Check if the packaging signals have been modified
+    def check_packaging_signals(self):
+        if self.packaging_signal_length_end > 0:
+            protected_substring1 = (
+                self.original_sequence[: self.packaging_signal_length_beginning]
+                + self.original_sequence[-self.packaging_signal_length_end :]
+            )
+            protected_substring2 = (
+                self.new_sequence[: self.packaging_signal_length_beginning]
+                + self.new_sequence[-self.packaging_signal_length_end :]
+            )
+        else:
+            protected_substring1 = self.original_sequence[
+                : self.packaging_signal_length_beginning
+            ]
+            protected_substring2 = self.new_sequence[
+                : self.packaging_signal_length_beginning
+            ]
+
+        if protected_substring1 != protected_substring2:
+            print()
+            print(protected_substring1)
+            print(protected_substring2)
+            print()
+            raise Exception(
+                "Code error: Protected packaging signal nucleotides have been changed!"
+            )
+
     # Applies synonymous mutations in a 5' to 3' direction.
     # Ensures there are sufficient gaps between new CpG's
     def mutate_CpG(self):
@@ -438,6 +517,9 @@ class Gene:
                     )
                     self.current_cg_positions.sort()
         self.load_new_sequence()
+        self.check_synonymity()
+        self.check_packaging_signals()
+        self.check_minimum_gaps()
 
     # Makes the new sequence richer in A nucleotides in codons that are not involved in
     # packaging or CpG's
@@ -462,6 +544,9 @@ class Gene:
                 if self.enforce_packaging_signal(codon):
                     codon.mutated = True
         self.load_new_sequence()
+        self.check_synonymity()
+        self.check_packaging_signals()
+        self.check_minimum_gaps()
 
     def find_desired_gap(self, desired_gap):
         def create_sequence(min_gap):
@@ -493,60 +578,6 @@ class Gene:
                 smallest_diff = abs(avg_gap - desired_gap)
                 closest_gap = mid
         return closest_gap
-
-    # Translates a sequence into amino acids
-    def translate_sequence(self, sequence):
-        protein = []
-        start = 0
-        while start + 2 < len(sequence):
-            codon = sequence[start : start + 3]
-            protein.append(dna_to_pro[codon][0])
-            start += 3
-        return "".join(protein)
-
-    # If there is a difference between the original amino acid sequence and the new one,
-    # returns the first difference in amino acids that it finds
-    def first_difference(self, str1, str2):
-        for a, b in zip(str1, str2):
-            if a != b:
-                return a + b
-
-    def check_synonymity(self):
-        translated1 = self.translate_sequence(self.original_sequence)
-        translated2 = self.translate_sequence(self.new_sequence)
-
-        # Checks if the original amino acid sequence is different to the new one and
-        # prints an error if so. If the original sequence has a stop codon, change
-        # translated1 for translated1[:-3]
-        if translated1 != translated2:
-            raise Exception(
-                "ERROR: Non-synonymous mutations were introduced!\\n"
-                + self.first_difference(translated1, translated2)
-            )
-
-    # Check if the packaging signals have been modified
-    def check_packaging_signals(self):
-        if self.packaging_signal_length_end > 0:
-            protected_substring1 = (
-                self.original_sequence[: self.packaging_signal_length_beginning]
-                + self.original_sequence[-self.packaging_signal_length_end :]
-            )
-            protected_substring2 = (
-                self.new_sequence[: self.packaging_signal_length_beginning]
-                + self.new_sequence[-self.packaging_signal_length_end :]
-            )
-        else:
-            protected_substring1 = self.original_sequence[
-                : self.packaging_signal_length_beginning
-            ]
-            protected_substring2 = self.new_sequence[
-                : self.packaging_signal_length_beginning
-            ]
-
-        if protected_substring1 != protected_substring2:
-            raise Exception(
-                "ERROR: Protected packaging signal nucleotides have been changed!"
-            )
 
     # Counts the number of CpG's in a genetic sequence
     def count_CpGs(self, sequence):
@@ -1019,27 +1050,35 @@ def mutate(
     mutation_settings = ""
 
     if gap_method == 1:
-        gene = Gene(
-            sequences[0].seq,
-            gap_method,
-            minimum_CpG_gap=option_value,
-            packaging_signal_length_beginning=protection_start_value,
-            packaging_signal_length_end=protection_end_value,
-        )
+        try:
+            gene = Gene(
+                sequences[0].seq,
+                gap_method,
+                minimum_CpG_gap=option_value,
+                packaging_signal_length_beginning=protection_start_value,
+                packaging_signal_length_end=protection_end_value,
+            )
+        except Exception as e:
+            pn.state.notifications.error(str(e), duration=0)
+            return
         description += (
             f"Synonymously recoded {original_id} sequence"
             f"to increase CpG's with a minimum gap of {option_value}"
         )
         mutation_settings += f"Minimum CpG gap set as {option_value}. "
     elif gap_method == 2:
-        gene = Gene(
-            sequences[0].seq,
-            gap_method,
-            minimum_CpG_gap=None,
-            desired_CpG_gap=option_value,
-            packaging_signal_length_beginning=protection_start_value,
-            packaging_signal_length_end=protection_end_value,
-        )
+        try:
+            gene = Gene(
+                sequences[0].seq,
+                gap_method,
+                minimum_CpG_gap=None,
+                desired_CpG_gap=option_value,
+                packaging_signal_length_beginning=protection_start_value,
+                packaging_signal_length_end=protection_end_value,
+            )
+        except Exception as e:
+            pn.state.notifications.error(str(e), duration=0)
+            return
         resultant_avg_gap = round(gene.calculate_average_gap())
         description += (
             f"Synonymously recoded {original_id} sequence "
@@ -1050,7 +1089,11 @@ def mutate(
             f"Algorithm-optimized minimal gap value is {gene.closest_gap}. "
         )
     if A_rich:
-        gene.mutate_A_rich()
+        try:
+            gene.mutate_A_rich()
+        except Exception as e:
+            pn.state.notifications.error(str(e))
+            return
         description += ". Mutated remaining codons to A-rich versions, if possible."
         mutation_settings += "\\nA-enriched remaining codons. "
 
