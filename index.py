@@ -10,7 +10,7 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
 from bokeh.plotting import figure
-from bokeh.models import ColumnDataSource, Range1d
+from bokeh.models import ColumnDataSource, Range1d, SingleIntervalTicker
 from bokeh.models.glyphs import Text, Rect
 from bokeh.layouts import gridplot
 
@@ -20,7 +20,7 @@ import panel.widgets as pnw
 
 pn.extension("tabulator", "notifications", design="fast", notifications=True)
 template = pn.template.FastListTemplate(
-    title="Synonymous-CpG-Spacer",
+    title="Syn-CpG-Spacer",
     theme_toggle=False,
     accent="#A01346",
     collapsed_sidebar=True,
@@ -710,7 +710,7 @@ def view_alignment():
         tools="xpan, reset, xwheel_pan",
         min_border=0,
         active_scroll="xwheel_pan",
-        lod_threshold=1000000000,
+        lod_threshold=1000000000,  # Prevent bokeh bug when displaying >2000 nucleotides
     )
     glyph = Text(
         x="x",
@@ -736,6 +736,9 @@ def view_alignment():
     p_detail.xaxis.major_label_text_font_style = "bold"
     p_detail.yaxis.minor_tick_line_width = 0
     p_detail.yaxis.major_tick_line_width = 0
+
+    ticker = SingleIntervalTicker(interval=15, num_minor_ticks=5)
+    p_detail.xaxis.ticker = ticker
 
     p = gridplot([[p_head], [p_detail]], toolbar_location="below")
 
