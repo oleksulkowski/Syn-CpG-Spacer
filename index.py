@@ -20,7 +20,7 @@ import panel.widgets as pnw
 
 pn.extension("tabulator", "notifications", design="fast", notifications=True)
 template = pn.template.FastListTemplate(
-    title="SynRecoder",
+    title="Synonymous-CpG-Spacer",
     theme_toggle=False,
     accent="#A01346",
     collapsed_sidebar=True,
@@ -1037,7 +1037,7 @@ def mutate(
         )
         mutation_settings += (
             f"Desired average CpG gap set as {option_value}.\n"
-            f"Algorithm-optimized minimal gap value is {gene.closest_gap}. "
+            f"Algorithm-optimized minimal gap value is {gene.minimum_CpG_gap}. "
         )
     if A_rich:
         try:
