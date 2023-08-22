@@ -1,5 +1,5 @@
-const appName = 'SynRecoder'
-const appCacheName = 'SynRecoder-2562e82f977b41b0b016103339a807be';
+const appName = 'Syn-CpG-Spacer'
+const appCacheName = 'Syn-CpG-Spacer-69899da8886e4ef7b226cc899c7ae722';
 
 const preCacheFiles = ['images/favicon.ico', 'images/icon-vector.svg', 'images/icon-32x32.png', 'images/icon-192x192.png', 'images/icon-512x512.png', 'images/apple-touch-icon.png', 'images/index_background.png'];
 
