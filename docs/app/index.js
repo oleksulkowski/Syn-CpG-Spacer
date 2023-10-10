@@ -15,7 +15,7 @@ async function startApplication() {
   self.pyodide.globals.set("sendPatch", sendPatch);
   console.log("Loaded!");
   await self.pyodide.loadPackage("micropip");
-  const env_spec = ['https://cdn.holoviz.org/panel/1.2.1/dist/wheels/bokeh-3.2.1-py3-none-any.whl', 'https://cdn.holoviz.org/panel/1.2.1/dist/wheels/panel-1.2.1-py3-none-any.whl', 'pyodide-http==0.2.1', 'Bio', 'numpy', 'pandas']
+  const env_spec = ['https://cdn.holoviz.org/panel/1.2.3/dist/wheels/bokeh-3.2.2-py3-none-any.whl', 'https://cdn.holoviz.org/panel/1.2.3/dist/wheels/panel-1.2.3-py3-none-any.whl', 'pyodide-http==0.2.1', 'Bio', 'numpy', 'pandas']
   for (const pkg of env_spec) {
     let pkg_name;
     if (pkg.endsWith('.whl')) {
@@ -75,6 +75,8 @@ template = pn.template.FastListTemplate(
     collapsed_sidebar=True,
     main_max_width="80vw",
 )
+
+notifications = pn.state.notifications
 
 # Taken from github.com/Mmark94/protein_recoding. For STOP codons, X is used as symbol.
 dna_to_pro = {
@@ -1001,7 +1003,7 @@ def load_fasta(event):
             try:
                 gene = Gene(sequence.seq, gap_method=None)
             except Exception as e:
-                pn.state.notifications.warning(str(e))
+                notifications.warning(str(e))
                 top_message.visible = True
                 return
             else:
@@ -1062,7 +1064,7 @@ def mutate(
                 packaging_signal_length_end=protection_end_value,
             )
         except Exception as e:
-            pn.state.notifications.error(str(e), duration=0)
+            notifications.error(str(e), duration=0)
             return
         description += (
             f"Synonymously recoded {original_id} sequence"
@@ -1080,7 +1082,7 @@ def mutate(
                 packaging_signal_length_end=protection_end_value,
             )
         except Exception as e:
-            pn.state.notifications.error(str(e), duration=0)
+            notifications.error(str(e), duration=0)
             return
         resultant_avg_gap = round(gene.calculate_average_gap())
         description += (
@@ -1095,7 +1097,7 @@ def mutate(
         try:
             gene.mutate_A_rich()
         except Exception as e:
-            pn.state.notifications.error(str(e))
+            notifications.error(str(e))
             return
         description += ". Mutated remaining codons to A-rich versions, if possible."
         mutation_settings += "\\nA-enriched remaining codons. "
@@ -1151,7 +1153,7 @@ def on_mutate_btn_click(event):
     option_value = w2.value
 
     if w2.value is None:
-        pn.state.notifications.warning("Please enter the mutation value.")
+        notifications.warning("Please enter the mutation value.")
         return
 
     if w3_start.value is None:
@@ -1168,15 +1170,13 @@ def on_mutate_btn_click(event):
         A_rich = False
 
     if identifier is None or identifier == "":
-        pn.state.notifications.warning("Please enter at least one character.")
+        notifications.warning("Please enter at least one character.")
     else:
         found = False
         for seq in sequences:
             if seq.id == identifier:
                 found = True
-                pn.state.notifications.warning(
-                    "A sequence with this name already exists."
-                )
+                notifications.warning("A sequence with this name already exists.")
                 return
 
         if not found:
