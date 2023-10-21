@@ -14,7 +14,7 @@ In browsers such as Chrome, Safari or Edge, it is possible to install the app on
 
 ## Usage
 
-The software allows the user to load their own FASTA sequence or to use a pre-loaded sample sequence (part of <a href="https://www.ncbi.nlm.nih.gov/nucleotide/MN685337.1">HIV-1 Gag</a>). The user can then either set a minimum gap between newly added CpG's or set a desired <u>average</u> gap between CpG's. With the latter option, the software will find a minimum gap that will result in as close a possible average gap to the user's setting using a binary search algorithm.
+The software allows the user to load their own FASTA sequence or to use a pre-loaded sample sequence (part of <a href="https://www.ncbi.nlm.nih.gov/nucleotide/MN685337.1">HIV-1 Gag</a>). The user can then either set a minimum gap between newly added CpG's or set a desired <ins>average</ins> gap between CpG's. With the latter option, the software will find a minimum gap that will result in as close a possible average gap to the user's setting using a binary search algorithm.
 
 The program allows protecting a set number of initial and final nucleotides from changes, which might be biologically relevant. As increasing the CpG content can decrease the frequency of A in a sequence, the user can also decide to make the remaining sequence synonymously A-rich after CpG's have been added.
 
@@ -28,7 +28,7 @@ Every new recoded sequence requires input of a unique ID. The sequences are disp
 3. It is determined which codons can potentially be transformed into CpG-forming alternatives based on their position in the sequence. The criterium is being at least the minimum CpG gap away from existing CpG's.
 4. The initial and final number of nucleotides are protected against changes, if specified by the user.
 5. Codons are mutated to synonymous CpG-forming alternatives along the sequence. Minimum CpG gap between newly added CpG's is ensured.
-6. The sequences' synonymity is checked, along with the preservation of packaging signals and adherence to the minimum gap settings.
+6. The sequences' synonymity is checked, along with the preservation of terminal signals and adherence to the minimum gap settings.
 7. If the A-enrichment option is selected, the rest of the sequence is synonymously recoded into more A-rich codons, without impacting CpG's.
 8. The same checks as those described in step 6 are performed.
 
