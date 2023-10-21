@@ -1,0 +1,11 @@
+name: Syn-CpG-Spacer
+channels:
+  - bokeh
+  - defaults
+dependencies:
+  - python=3.11
+  - panel
+  - biopython
+  - bokeh
+  - pytest
+  

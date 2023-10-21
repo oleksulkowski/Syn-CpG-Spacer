@@ -2,11 +2,11 @@
 
 Syn-CpG-Spacer is a Progressive Web App (PWA) for biomedical scientists written in Python using Panel, Bokeh, Biopython libraries. It allows for synonymous recoding of genetic sequences to increase the frequency of CpG dinucleotides by setting constraints on their spacing. The primary usecase are experiments with attenuation of viruses.
 
-The software changes codons along a sequence to synonymous alternatives that form CpG dinucleotides according to user's settings. This can be done at codon positions 1-2, 2-3 and 3-1 (split over two subsequent codons).
+The software changes codons along a sequence to synonymous alternatives that form CpG dinucleotides according to the user's settings. This can be done at codon positions 1-2, 2-3 and 3-1 (split over two subsequent codons).
 
-Thanks to Panel's Pyodide integration, the app is hosted on GitHub Pages in this repository and is available at the following address:
+Using Panel's Pyodide integration, the app is hosted on GitHub Pages in this repository and is available on the following address:
 
-https://oleksulkowski.github.io/app
+https://oleksulkowski.github.io/Syn-CpG-Spacer/app/
 
 ## Installation
 
@@ -14,9 +14,9 @@ In browsers such as Chrome, Safari or Edge, it is possible to install the app on
 
 ## Usage
 
-The software allows the user to load their own FASTA sequence or to use a pre-loaded sample sequence (part of <a href="https://www.ncbi.nlm.nih.gov/nucleotide/MN685337.1">HIV-1 Gag</a>). The user can then either set a minimum gap between newly added CpG's or set a desired average gap between CpG's. With the latter option, the software will find a minimum gap that will result in as close a possible average gap to the user's setting using a binary search algorithm.
+The software allows the user to load their own FASTA sequence or to use a pre-loaded sample sequence (part of <a href="https://www.ncbi.nlm.nih.gov/nucleotide/MN685337.1">HIV-1 Gag</a>). The user can then either set a minimum gap between newly added CpG's or set a desired <u>average</u> gap between CpG's. With the latter option, the software will find a minimum gap that will result in as close a possible average gap to the user's setting using a binary search algorithm.
 
-Due to the fact that in some viral genomes, mutations in terminal regions can interfere with packaging, the program allows protecting a set number of initial and final nucleotides from changes. As increasing the CpG content can decrease the frequency of A in a sequence, the user can also decide to make the remaining sequence synonymously more A-rich after CpG's have been added.
+The program allows protecting a set number of initial and final nucleotides from changes, which might be biologically relevant. As increasing the CpG content can decrease the frequency of A in a sequence, the user can also decide to make the remaining sequence synonymously A-rich after CpG's have been added.
 
 Every new recoded sequence requires input of a unique ID. The sequences are displayed on an interactive alignment view that highlights CpG dinucleotides. A table shows statistical data. The user can adjust the settings and compare the sequences. When finished, the user can download the outputs as a FASTA file.
 
@@ -32,8 +32,45 @@ Every new recoded sequence requires input of a unique ID. The sequences are disp
 7. If the A-enrichment option is selected, the rest of the sequence is synonymously recoded into more A-rich codons, without impacting CpG's.
 8. The same checks as those described in step 6 are performed.
 
-## Community guidelines
 
+## Development
+
+Use the Syn-CpG-Spacer.yml file to create an environment with all the dependencies:
+
+```
+conda env create -f Syn-CpG-Spacer.yml
+conda activate Syn-CpG-Spacer
+```
+
+As per panel <a href="https://panel.holoviz.org/how_to/wasm/">documentation</a>, develop locally in `index.py` using
+```
+panel serve index.py --autoreload
+```
+
+Then, convert `index.py` to Pyodide:
+```
+panel convert index.py --to pyodide-worker --out docs/app --title Syn-CpG-Spacer --pwa
+```
+
+
+You can run the Pyodide app locally on http://localhost:8000/docs/app by using
+```
+python3 -m http.server
+```
 
 ## Tests
 
+Syn-CpG-Spacer uses Pytest for checking if code changes introduced errors into the recoding algorithm by comparing the new output to a set of validated sequences. This is hooked up to Github Actions CI. Run the tests using
+
+```
+pytest
+```
+
+Within the app, each algorithm run is checked to ensure correct application of user-defined variables.
+
+
+Please use the <a href="https://github.com/oleksulkowski/synrecoder/issues">issues tab</a> for bug reports and feature requests.
+
+## Acknowledgements
+
+The Bokeh sequence viewer is based on <a href="https://dmnfarrell.github.io/bioinformatics/bokeh-sequence-aligner">code</a> by Damien Farrell (<a href="https://github.com/dmnfarrell">@dmnfarrell</a>).
