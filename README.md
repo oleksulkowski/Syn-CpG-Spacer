@@ -42,7 +42,7 @@ conda env create -f Syn-CpG-Spacer.yml
 conda activate Syn-CpG-Spacer
 ```
 
-As per panel <a href="https://panel.holoviz.org/how_to/wasm/">documentation</a>, develop locally in `index.py` using
+As per Panel <a href="https://panel.holoviz.org/how_to/wasm/">documentation</a>, develop locally in `index.py` using
 ```
 panel serve index.py --autoreload
 ```
