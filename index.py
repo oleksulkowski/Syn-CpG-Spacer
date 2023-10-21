@@ -805,22 +805,10 @@ modifiers = pn.FlexBox(
 )
 modifiers.visible = False
 
+# 'How to cite' section will be added here after publication
 footer = pn.pane.HTML(
     """
-    Aleksander Sułkowski 2023 <br>
-    <a
-        id="cy-effective-orcid-url"
-        class="underline"
-        href="https://orcid.org/0000-0002-0624-428X"
-        target="orcid.widget"
-        rel="me noopener noreferrer"
-        style="vertical-align: top">
-        <img
-            src="https://orcid.org/sites/default/files/images/orcid_16x16.png"
-            style="width: 1em; margin-inline-start: 0.5em"
-            alt="ORCID iD icon"/>
-        https://orcid.org/0000-0002-0624-428X
-    </a>
+
     """,
     styles={
         "width": "100%",
