@@ -1055,7 +1055,7 @@ def mutate(
             notifications.error(str(e), duration=0)
             return
         description += (
-            f"Synonymously recoded {original_id} sequence"
+            f"Synonymously recoded {original_id} sequence "
             f"to increase CpG's with a minimum gap of {option_value}"
         )
         mutation_settings += f"Minimum CpG gap set as {option_value}. "
