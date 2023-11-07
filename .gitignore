@@ -165,8 +165,6 @@ cython_debug/
 *.fa
 *.png
 *.ipynb
-*.md
-*.bib
 
 .flake8
 .conda
