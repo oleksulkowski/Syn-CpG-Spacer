@@ -1149,7 +1149,7 @@ top_message = pn.pane.Markdown(
     If loading a Fasta file with more than one sequence, ensure that \
         sequence lengths are equal.
 
-    In such case, the sequence at the top of the file will be used in the \
+    In such case, the sequence at the top of the file will be used by the \
         recoding algorithm.
     """,
     max_width=600,
