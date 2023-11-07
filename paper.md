@@ -9,7 +9,7 @@ tags:
     - CpG
     - genome recoding
 authors:
-    - name: Aleksander Sułkowski
+    - name: Aleksander Sulkowski
       orcid: 0000-0002-0624-428X
       corresponding: true
       affiliation: 1
@@ -47,6 +47,6 @@ Another potential application for the software is creation of CpG islands, which
 
 # Acknowledgements
 
-Aleksander Sułkowski is financially supported by the Association of Clinical Pathologists (UK). Clément Bouton and Chad Swanson are supported by the MRC grant MR/W018519/1.
+Aleksander Sulkowski is financially supported by the Association of Clinical Pathologists (UK). Clément Bouton and Chad Swanson are supported by the MRC grant MR/W018519/1.
 
 # References

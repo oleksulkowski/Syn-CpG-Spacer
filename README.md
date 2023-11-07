@@ -69,6 +69,8 @@ pytest
 Within the app, each algorithm run is checked to ensure correct application of user-defined variables.
 
 
+## Community contributions
+
 Please use the <a href="https://github.com/oleksulkowski/synrecoder/issues">issues tab</a> for bug reports and feature requests.
 
 ## Acknowledgements
