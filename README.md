@@ -35,10 +35,10 @@ Every new recoded sequence requires input of a unique ID. The sequences are disp
 
 ## Development
 
-Use the Syn-CpG-Spacer.yml file to create an environment with all the dependencies:
+Use the `environment.yml` file to create an environment with all the dependencies:
 
 ```
-conda env create -f Syn-CpG-Spacer.yml
+conda env create -f environment.yml
 conda activate Syn-CpG-Spacer
 ```
 
@@ -47,7 +47,7 @@ As per Panel <a href="https://panel.holoviz.org/how_to/wasm/">documentation</a>,
 panel serve index.py --autoreload
 ```
 
-Then, convert `index.py` to Pyodide:
+After making changes, convert `index.py` to the Pyodide PWA:
 ```
 panel convert index.py --to pyodide-worker --out docs/app --title Syn-CpG-Spacer --pwa
 ```
