@@ -943,7 +943,7 @@ load_sample_btn = pnw.Button(
 )
 load_sample_btn.on_click(load_sample)
 
-file_input = pnw.FileInput(accept=".fasta,.aln")
+file_input = pnw.FileInput(accept=".fasta,.fa,.fas,.aln")
 
 
 # Define function to load FASTA file and display sequences
@@ -1017,7 +1017,7 @@ def load_fasta(event):
         successful_load_dummy.value = not successful_load_dummy.value
 
         file_input.param.unwatch(file_input_watcher)
-        new_file_input = pnw.FileInput(accept=".fasta,.aln")
+        new_file_input = pnw.FileInput(accept=".fasta,.fa,.fas,.aln")
         new_file_input_watcher = new_file_input.param.watch(load_fasta, "value")
         top[1] = new_file_input
         file_input = new_file_input
@@ -1195,7 +1195,7 @@ top_message = pn.pane.Markdown(
 
     Please load an in-frame sequence, of a length divisible by 3.
 
-    If loading a Fasta file with more than one sequence, ensure that \
+    If loading a FASTA file with more than one sequence, ensure that \
         sequence lengths are equal.
 
     In such case, the sequence at the top of the file will be used by the \
