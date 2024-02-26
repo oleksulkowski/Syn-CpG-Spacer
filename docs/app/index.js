@@ -293,7 +293,10 @@ class Codon:
     def check_codon_viability(self):
         aa_symbol = self.translate_codon()
         if aa_symbol is None:
-            raise Exception("Your file contains invalid codons.")
+            raise Exception(
+                "Your sequence does not start in-frame \
+                or some codons are not in the codon table."
+            )
 
 
 class Gene:
@@ -979,6 +982,9 @@ def load_fasta(event):
         sequence_lengths = [len(sequence) for sequence in sequences]
         if len(sequences) > 1 and len(set(sequence_lengths)) > 1:
             top_message.visible = True
+            notifications.warning(
+                "The sequences in your input file must be of equal length!", duration=0
+            )
             return
 
         for sequence in sequences:
@@ -991,7 +997,7 @@ def load_fasta(event):
             try:
                 gene = Gene(sequence.seq, gap_method=None)
             except Exception as e:
-                notifications.warning(str(e))
+                notifications.warning(str(e), duration=0)
                 top_message.visible = True
                 return
             else:
@@ -1085,7 +1091,7 @@ def mutate(
         try:
             gene.mutate_A_rich()
         except Exception as e:
-            notifications.error(str(e))
+            notifications.error(str(e), duration=0)
             return
         description += ". Mutated remaining codons to A-rich versions, if possible."
         mutation_settings += "\\nA-enriched remaining codons. "
@@ -1193,7 +1199,9 @@ top_message = pn.pane.Markdown(
     It can also make the remaining sequence more A-rich, \
         while maintaining the amino acid sequence.
 
-    Please load an in-frame sequence, of a length divisible by 3.
+    Please load a sequence starting in-frame, of a nucleotide length divisible by 3. \
+        It must only contain codons present in the \
+        <a href="https://www.hgmd.cf.ac.uk/docs/cd_amino.html">codon table</a>.
 
     If loading a FASTA file with more than one sequence, ensure that \
         sequence lengths are equal.

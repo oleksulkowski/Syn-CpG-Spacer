@@ -14,7 +14,11 @@ In browsers such as Chrome, Safari or Edge, it is possible to install the app on
 
 ## Usage
 
-The software allows the user to load their own FASTA sequence or to use a pre-loaded sample sequence (part of <a href="https://www.ncbi.nlm.nih.gov/nucleotide/MN685337.1">HIV-1 Gag</a>). The user can then either set a minimum gap between newly added CpG's or set a desired <ins>average</ins> gap between CpG's. With the latter option, the software will find a minimum gap that will result in as close a possible average gap to the user's setting using a binary search algorithm.
+The software allows the user to load their own FASTA sequence or to use a pre-loaded sample sequence (part of <a href="https://www.ncbi.nlm.nih.gov/nucleotide/MN685337.1">HIV-1 Gag</a>).
+
+**Important:** The loaded sequence must start in-frame, contain only codons present in the <a href="https://www.hgmd.cf.ac.uk/docs/cd_amino.html">codon table</a> and be of a length divisible by 3. If more than one sequence is present in the loaded FASTA file, they must all be of equal length. Only the sequence at the top of the file will be recoded.
+
+The user can then either set a minimum gap between newly added CpG's or set a desired <ins>average</ins> gap between CpG's. With the latter option, the software will find a minimum gap that will result in as close a possible average gap to the user's setting using a binary search algorithm.
 
 The program allows protecting a set number of initial and final nucleotides from changes, which might be biologically relevant. As increasing the CpG content can decrease the frequency of A in a sequence, the user can also decide to make the remaining sequence synonymously A-rich after CpG's have been added.
 
