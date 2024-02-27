@@ -233,6 +233,37 @@ DIC_for_A_rich = {
 
 
 class Codon:
+    """
+    Represents a codon, which is a sequence of three nucleotides that together form a unit of genetic code in a DNA or RNA molecule.
+
+    Attributes:
+        position (int): The position of the codon within the Gene object, indicating the index of the first nucleotide of the codon.
+        sequence (str): The sequence of nucleotides in the codon.
+        next_codon (Codon, optional): Reference to the next codon object in the sequence, if applicable.
+        has_cg (bool): Indicates whether the codon contains a CpG dinucleotide.
+        protected (bool): Flag indicating whether the codon should not be mutated.
+        cg_split (bool): Indicates if a CpG dinucleotide is split over two subsequent codons.
+        mutable (bool, optional): Indicates if the codon can be mutated to contain a CpG dinucleotide.
+        potential_new_seq (str, optional): Holds a potential new sequence for the codon that might be considered for mutation, to form a CpG dinucleotide.
+        mutated (bool): Tracks whether the codon has been mutated.
+
+    Methods:
+        __init__(self, position, sequence, next_codon=None, has_cg=False, protected=False, cg_split=False, mutable=None, potential_new_seq=None, mutated=False):
+            Initializes a Codon object with the provided attributes.
+
+        get_cg_position(self, sequence):
+            Determines the position of a CpG dinucleotide within the codon or across adjacent codons, relative to the 'C'.
+
+        get_mutation_positions(self):
+            Identifies positions within the codon where mutations are possible based on the potential new sequence.
+
+        translate_codon(self):
+            Translates the codon sequence into its corresponding amino acid symbol according to the genetic code.
+
+        check_codon_viability(self):
+            Checks if the codon sequence is viable for translation based on its sequence.
+    """
+
     def __init__(
         self,
         position,
@@ -245,6 +276,21 @@ class Codon:
         potential_new_seq=None,
         mutated=False,
     ):
+        """
+        Initializes a Codon object with the provided attributes.
+
+        Parameters:
+            position (int): The position of the codon within the Gene object.
+            sequence (str): The nucleotide sequence of the codon.
+            next_codon (Codon, optional): The next codon in the sequence.
+            has_cg (bool): True if the codon contains a CpG dinucleotide, else False.
+            protected (bool): True if the codon is should not be mutated, else False.
+            cg_split (bool): True if a CpG dinucleotide is split between this codon and the next, else False.
+            mutable (bool, optional): True if the codon can potentially be mutated to contain a CpG, else False.
+            potential_new_seq (str, optional): A potential new sequence for mutation, forming a CpG dinucleotide.
+            mutated (bool): True if the codon has been mutated, else False.
+        """
+
         self.position = position  # Position of the codon, not the CG!
         self.sequence = sequence
         self.next_codon = next_codon
@@ -257,8 +303,17 @@ class Codon:
 
         self.check_codon_viability()
 
-    # Relative to the 'C'
     def get_cg_position(self, sequence):
+        """
+        Determines the position of a CpG dinucleotide within the codon or across adjacent codons, relative to the 'C'.
+
+        Parameters:
+            sequence (str): The nucleotide sequence of the codon to check for CpG presence.
+
+        Returns:
+            int or None: The position of the 'C' in the CpG dinucleotide, if present; otherwise, None.
+        """
+
         if sequence is not None:
             # Check for a CG pair within this codon
             for i in range(3):
@@ -277,6 +332,13 @@ class Codon:
         return
 
     def get_mutation_positions(self):
+        """
+        Identifies positions within the codon where mutations are possible based on the potential new sequence.
+
+        Returns:
+            list of int: A list of positions within the codon where mutations differ from the original sequence.
+        """
+
         diff_positions = []
 
         for i in range(3):
@@ -285,12 +347,26 @@ class Codon:
         return diff_positions
 
     def translate_codon(self):
+        """
+        Translates the codon sequence into its corresponding amino acid symbol according to the genetic code.
+
+        Returns:
+            str or None: The single-letter symbol of the amino acid if the codon is valid; otherwise, None.
+        """
+
         if self.sequence in dna_to_pro:
             aa_symbol = dna_to_pro[self.sequence]
             return aa_symbol
 
     # Checks if the codon is viable. If not, this function will raise an error
     def check_codon_viability(self):
+        """
+        Checks if the codon sequence is viable for translation based on its sequence.
+
+        Raises:
+            Exception: If the codon sequence cannot be translated into a known amino acid.
+        """
+
         aa_symbol = self.translate_codon()
         if aa_symbol is None:
             raise Exception(
@@ -300,6 +376,115 @@ class Codon:
 
 
 class Gene:
+    """
+    Represents a sequence of nucleotides in DNA or RNA, as loaded by the user.
+
+    Attributes:
+        original_sequence (str): The nucleotide sequence of the gene as originally provided.
+            This serves as the baseline genetic material upon which mutations and analyses are performed.
+
+        new_sequence (str): Holds the modified nucleotide sequence following mutation operations.
+            This attribute is updated dynamically as mutations are applied to the original_sequence.
+            It allows for comparison between the original and mutated gene sequences to assess the effects of mutations.
+
+        sequence_length (int): The length of the original_sequence. This attribute is useful for
+            operations that require knowledge of the gene's length, such as iterating over the sequence,
+            analyzing codon distribution, and applying mutations within specified regions.
+
+        packaging_signal_length_beginning (int): Specifies the length of a protected region at the
+            beginning of the sequence that should not be mutated. This is important for preserving
+            essential elements such as promoters or regulatory sequences that are critical for gene expression.
+
+        packaging_signal_length_end (int): Specifies the length of a protected region at the end of
+            the sequence that should not be mutated. Like the beginning signal, this ensures that
+            essential regulatory or terminating sequences are maintained intact.
+
+        gap_method (int): Indicates the method used to determine the spacing or gaps between
+            CpG sites. This parameter guides the mutation strategies to either enforce a minimum gap length or
+            adjust CpG spacing to approximate a target average gap. The gap_method can be specified as an integer:
+            - 1: Indicates that a minimum gap length between CpG sites is specified.
+            - 2: Indicates that a target average gap length between CpG sites is specified.
+
+        minimum_CpG_gap (int): The minimum number of nucleotides that must separate added CpG sites in the
+            mutated sequence.
+
+        desired_CpG_gap (int, optional): An optional target average gap length between CpG sites.
+            If specified, mutation strategies may aim to adjust CpG spacing to approximate this value.
+
+        original_cg_positions (list): A list of positions within the original_sequence where CpG sites
+            are located. This information is key to understanding the original CpG distribution.
+
+        mutable_positions (list): A list of positions within the gene sequence deemed suitable for
+            mutation, based on criteria such as CpG spacing, packaging signals, and other factors.
+            This list is used to direct where mutations can be applied without compromising essential
+            gene functions or regulatory elements.
+
+        original_codons (list): A list of Codon objects representing the codons in the original_sequence.
+            This attribute facilitates detailed analysis and manipulation at the codon level, allowing for
+            targeted mutations and the study of codon usage patterns.
+
+        current_codons (list): A list of Codon objects representing the codons in the sequence after mutations.
+            It mirrors the original_codons and reflects changes made during mutation processes, serving as a
+            basis for analyzing the mutated sequence's codon composition and distribution. Used to create new_sequence.
+
+        original_average_gap (float): Represents the average gap length between CpG sites in the original_sequence.
+
+    Methods:
+        __init__(self, original_sequence, gap_method, packaging_signal_length_beginning=0, packaging_signal_length_end=0, minimum_CpG_gap=12, desired_CpG_gap=None):
+            Initializes the Gene object with the provided sequence and configuration parameters.
+
+        check_gap_method(self):
+            Determines the gap method based on user configuration and initiates mutation or gap optimalization processes.
+
+        analyze_codons(self):
+            Analyzes the provided nucleotide sequence to identify codons and CpG sites, creating Codon objects for each.
+
+        enforce_packaging_signal(self, codon):
+            Ensures a given codon mutation respects the packaging signal constraints.
+
+        load_new_sequence(self):
+            Constructs the new nucleotide sequence after mutations have been applied.
+
+        determine_changeable_CpG(self):
+            Identifies codons that can be synonymously mutated to increase CpG sites while respecting gap constraints.
+
+        translate_sequence(self, sequence):
+            Translates a nucleotide sequence into its corresponding amino acid sequence.
+
+        first_difference(self, str1, str2):
+            Identifies the first difference between two amino acid sequences. Used for debugging.
+
+        check_synonymity(self):
+            Ensures that mutations applied to the nucleotide sequence do not alter the encoded amino acid sequence.
+
+        check_minimum_gaps(self):
+            Validates that the minimum gap constraint between CpG sites is respected in the mutated sequence.
+
+        check_packaging_signals(self):
+            Ensures that mutations do not alter the designated packaging signal regions of the sequence.
+
+        mutate_CpG(self):
+            Applies mutations to increase CpG sites while ensuring synonymity and respecting gap and packaging constraints.
+
+        mutate_A_rich(self):
+            Mutates the remaining sequence synonymously to increase the prevalence of adenine nucleotides, avoiding packaging signals and CpG sites.
+
+        find_desired_gap(self, desired_gap):
+            Find the closest possible gap setting to achieve a desired average gap between CpG sites.
+
+        count_CpGs(self, sequence):
+            Counts the number of CpG sites within the gene sequence.
+
+        calculate_average_gap(self, mode="current", st_dev=False):
+            Calculates the average length of gaps between CpG sites in the gene sequence.
+
+        calculate_CpG_abundance_change(self):
+            Calculates the percentage change in CpG abundance between the original gene sequence and the mutated gene sequence.
+
+        calculate_A_abundance_change(self):
+            Calculates the percentage change in the abundance of adenine between the original and new gene sequences.
+    """
+
     def __init__(
         self,
         original_sequence,
@@ -309,6 +494,18 @@ class Gene:
         minimum_CpG_gap=12,
         desired_CpG_gap=None,
     ):
+        """
+        Initialize a Gene object with specific configuration parameters.
+
+        Parameters:
+            original_sequence (str): The original nucleotide sequence of the gene.
+            gap_method (int): The method to use for determining new CpG gaps for mutating the sequence.
+            packaging_signal_length_beginning (int, optional): Length of the packaging signal at the beginning of the sequence. Defaults to 0.
+            packaging_signal_length_end (int, optional): Length of the packaging signal at the end of the sequence. Defaults to 0.
+            minimum_CpG_gap (int, optional): The minimum gap between CpG sites in the sequence. Defaults to 12.
+            desired_CpG_gap (int, optional): The desired gap between CpG sites, used for adjusting the sequence accordingly.
+        """
+
         self.original_sequence = original_sequence
         self.new_sequence = None
 
@@ -333,10 +530,16 @@ class Gene:
     def minimum_CpG_gap_extra(self):
         return self.minimum_CpG_gap + 1
 
-    # See if the user defined a minimum gap, or defined an average CpG spacing,
-    # towards which the gap will be adjusted
     def check_gap_method(self):
-        if self.gap_method is None:
+        """
+        Determine and apply the gap method based on the user's configuration.
+
+        This method decides between maintaining a minimum CpG gap or adjusting to a desired mean CpG gap, and initiates the corresponding process.
+        """
+
+        if (
+            self.gap_method is None
+        ):  # This is required for checking the sequence after it is loaded and before the user has mutated it
             return
         elif self.gap_method == 1 and self.desired_CpG_gap is None:
             self.determine_changeable_CpG()
@@ -344,8 +547,13 @@ class Gene:
         elif self.gap_method == 2 and self.minimum_CpG_gap is None:
             self.closest_gap = self.find_desired_gap(self.desired_CpG_gap)
 
-    # Creates class instances for codons and looks for original CpG's
     def analyze_codons(self):
+        """
+        Analyze the nucleotide sequence to identify codons and CpG sites.
+
+        This method creates Codon objects for each codon in the sequence and identifies original CpG positions.
+        """
+
         codons = []
         for i in range(0, self.sequence_length, 3):
             codon_sequence = self.original_sequence[i : i + 3]
@@ -376,6 +584,18 @@ class Gene:
         return codons
 
     def enforce_packaging_signal(self, codon):
+        """
+        Ensures a given codon mutation respects the packaging signal constraints.
+
+        There may be more than one mutable position in a codon, so this method checks all of them.
+
+        Parameters:
+            codon (Codon): The codon to check for potential mutation.
+
+        Returns:
+            bool: True if the mutation respects the packaging signal constraints, False otherwise.
+        """
+
         mutation_positions = codon.get_mutation_positions()
         comparison_results = []
 
@@ -395,8 +615,13 @@ class Gene:
             comparison_results.append(result)
         return all(comparison_results)
 
-    # Applies mutations into the object to create a new sequence
     def load_new_sequence(self):
+        """
+        Construct the new nucleotide sequence after mutations have been applied.
+
+        This method updates the new_sequence attribute of the Gene object with the mutated sequence.
+        """
+
         self.new_sequence = ""
         for codon in self.current_codons:
             if codon.mutated:
@@ -404,9 +629,13 @@ class Gene:
             else:
                 self.new_sequence = self.new_sequence + codon.sequence
 
-    # Finds which codons can be synonymously mutated to give more CpG's. Such codons
-    # must have at least a minimum_CpG_gap nucleotides-long gap between another CpG
     def determine_changeable_CpG(self):
+        """
+        Identify codons that can be synonymously mutated to increase CpG sites while respecting gap constraints.
+
+        This method updates the list of mutable positions that can potentially increase CpG sites.
+        """
+
         for codon in self.current_codons:
             if (
                 not codon.has_cg
@@ -430,8 +659,17 @@ class Gene:
                         self.mutable_positions.append(cg_position)
         self.mutable_positions.sort()
 
-    # Translates a sequence into amino acids
     def translate_sequence(self, sequence):
+        """
+        Translate a nucleotide sequence into its corresponding amino acid sequence.
+
+        Parameters:
+            sequence (str): The nucleotide sequence to translate.
+
+        Returns:
+            str: The translated amino acid sequence.
+        """
+
         protein = []
         start = 0
         while start + 2 < len(sequence):
@@ -440,29 +678,50 @@ class Gene:
             start += 3
         return "".join(protein)
 
-    # If there is a difference between the original amino acid sequence and the new one,
-    # returns the first difference in amino acids that it finds
     def first_difference(self, str1, str2):
+        """
+        Identify the first difference between two amino acid sequences. Used for debugging purposes.
+
+        Parameters:
+            str1 (str): The first amino acid sequence.
+            str2 (str): The second amino acid sequence.
+
+        Returns:
+            str: The first differing amino acids between the two sequences.
+        """
+
         for a, b in zip(str1, str2):
             if a != b:
                 return a + b
 
     def check_synonymity(self):
+        """
+        Ensure that mutations applied do not alter the encoded amino acid sequence.
+
+        This method checks for synonymity between the original and new sequences, raising an exception if a non-synonymous mutation is found.
+        """
+
         translated1 = self.translate_sequence(self.original_sequence)
         translated2 = self.translate_sequence(self.new_sequence)
 
-        # Checks if the original amino acid sequence is different to the new one.
         if translated1 != translated2:
             raise Exception(
                 "Code error: Non-synonymous mutations were introduced!\\n"
                 + self.first_difference(translated1, translated2)
             )
 
-    # Check if minimum gaps are respected. Subtract 2 because we're looking at the gap
     def check_minimum_gaps(self):
+        """
+        Validate that the minimum gap constraint between CpG sites is respected.
+
+        This method checks if the mutated sequence maintains the required minimum gaps between CpG sites, raising an exception if the constraint is violated.
+        """
+
         for i in range(1, len(self.current_cg_positions)):
             diff = abs(
-                self.current_cg_positions[i] - self.current_cg_positions[i - 1] - 2
+                self.current_cg_positions[i]
+                - self.current_cg_positions[i - 1]
+                - 2  # Subtract 2 because we're looking at the gap
             )
             if diff < self.minimum_CpG_gap and (
                 (self.current_cg_positions[i] or self.current_cg_positions[i - 1])
@@ -473,8 +732,13 @@ class Gene:
                     f"preserved! Gap: {diff} at {self.current_cg_positions[i]}"
                 )
 
-    # Check if the packaging signals have been modified
     def check_packaging_signals(self):
+        """
+        Validate that mutations do not alter the designated packaging signal regions.
+
+        This method checks for changes in the packaging signal regions due to mutations, raising an exception if such changes are detected.
+        """
+
         if self.packaging_signal_length_end > 0:
             protected_substring1 = (
                 self.original_sequence[: self.packaging_signal_length_beginning]
@@ -501,9 +765,13 @@ class Gene:
                 "Code error: Protected packaging signal nucleotides have been changed!"
             )
 
-    # Applies synonymous mutations in a 5' to 3' direction.
-    # Ensures there are sufficient gaps between new CpG's
     def mutate_CpG(self):
+        """
+        Apply mutations to increase CpG sites while ensuring synonymity and respecting gap and packaging constraints.
+
+        This method applies synonymous mutations to the sequence to increase the number of CpG sites, following the defined constraints.
+        """
+
         for codon in self.current_codons:
             if codon.mutable and all(
                 position
@@ -526,9 +794,13 @@ class Gene:
         self.check_packaging_signals()
         self.check_minimum_gaps()
 
-    # Makes the new sequence richer in A nucleotides in codons that are not involved in
-    # packaging or CpG's
     def mutate_A_rich(self):
+        """
+        Mutate the remaining sequence synonymously to increase the prevalence of adenine nucleotides.
+
+        This method targets specific codons for mutation to make the sequence richer in adenine nucleotides while respecting packaging and CpG constraints.
+        """
+
         for codon in self.current_codons:
             if (
                 not codon.protected
@@ -554,6 +826,18 @@ class Gene:
         self.check_minimum_gaps()
 
     def find_desired_gap(self, desired_gap):
+        """
+        Find the closest possible gap setting to achieve a desired average gap between CpG sites.
+
+        This method iteratively adjusts the minimum CpG gap to approach the desired average gap between CpG sites as closely as possible.
+
+        Parameters:
+            desired_gap (int): The target average gap between CpG sites in the sequence.
+
+        Returns:
+            int: The closest possible gap setting to the desired average gap.
+        """
+
         def create_sequence(min_gap):
             self.minimum_CpG_gap = min_gap
             self.current_cg_positions = self.original_cg_positions.copy()
@@ -584,12 +868,28 @@ class Gene:
                 closest_gap = mid
         return closest_gap
 
-    # Counts the number of CpG's in a genetic sequence
     def count_CpGs(self, sequence):
+        """
+        Count the number of CpG sites within the gene sequence.
+
+        A CpG site is identified as a cytosine (C) followed immediately by a guanine (G) in the 5' to 3' direction of the DNA sequence.
+
+        Returns:
+            int: The total number of CpG sites found in the gene sequence.
+        """
+
         return sequence.count("CG")
 
-    # Calculates the average gap between CpG's in the sequence
     def calculate_average_gap(self, mode="current", st_dev=False):
+        """
+        Calculate the average length of gaps between CpG sites in the gene sequence.
+
+        This method identifies all CpG sites within the sequence and calculates the distances between consecutive CpG sites. The average gap length is computed as the mean of these distances.
+
+        Returns:
+            float: The average length of gaps between CpG sites in the gene sequence. If there are fewer than two CpG sites, the method returns None, indicating that an average gap cannot be calculated.
+        """
+
         if mode == "original":
             positions = self.original_cg_positions
         elif mode == "current":
@@ -614,6 +914,13 @@ class Gene:
             return std_dev
 
     def calculate_CpG_abundance_change(self):
+        """
+        Calculate the percentage change in CpG abundance between the original gene sequence and the mutated gene sequence.
+
+        Returns:
+            float: The percentage change in CpG abundance between the new gene sequence and the old sequence. A positive value indicates an increase in CpG abundance from the current sequence to the other, while a negative value indicates a decrease.
+        """
+
         original_CpG_abundance = self.count_CpGs(self.original_sequence)
         final_CpG_abundance = self.count_CpGs(self.new_sequence)
 
@@ -636,8 +943,14 @@ class Gene:
 
         return change
 
-    # Calculates the change in A-richness of the sequence
     def calculate_A_abundance_change(self):
+        """
+        Calculates the percentage change in the abundance of adenine between the original and new gene sequences.
+
+        Returns:
+            float: The percentage change in adenine (A) abundance, rounded to one decimal place. A positive value indicates an increase in 'A' abundance, while a negative value indicates a decrease. If the original abundance is 0, returns 0.0.
+        """
+
         original_A_abundance = self.original_sequence.count("A") / len(
             self.original_sequence
         )
@@ -663,7 +976,20 @@ current_coloring_mode = 1
 
 
 def view_alignment():
-    # Bokeh sequence alignment view
+    """
+    Generates a visual alignment of sequences using Bokeh for interactive visualization.
+
+    This function extracts the sequences and their IDs from the \`sequences\` object and prepares them for visualization.
+    It employs a nested function, \`get_colors\`, to assign colors to each base in the sequence depending on the selected coloring mode, highlighting specific features like CG dinucleotides or individual base types.
+
+    The function then constructs two Bokeh plots: one for an overview of the entire sequence alignment (without text) and another detailed view displaying the sequence text with the ability to scroll along the x-axis. The views use color coding for bases and allows for interactive exploration of the sequence alignment.
+
+    Coloring modes can be switched interactively, updating the visualization accordingly. This interactive feature relies on the \`pn.depends\` decorator to watch for changes in the coloring mode and update the plot data source with new colors.
+
+    Returns:
+        Panel object: A Bokeh gridplot object that combines the overview and detailed sequence views, configured for interactive web display.
+    """
+
     global sequences
 
     if not sequences:  # if list is empty
@@ -878,6 +1204,17 @@ sequences = []
 
 
 def download_alignment():
+    """
+    Converts the in-memory sequence alignment into a downloadable FASTA format.
+
+    This function takes the global \`sequences\` variable, which is expected to be a list of Bio.SeqRecord objects
+    (from Biopython), and writes these sequences to a FASTA formatted string. This string is then encoded to bytes,
+    which can be used for creating a file-like object suitable for downloading.
+
+    Returns:
+        BytesIO: A file-like object containing the sequences in FASTA format, encoded as bytes.
+    """
+
     output = StringIO()
     SeqIO.write(sequences, output, "fasta")
     fasta_str = output.getvalue()
@@ -899,6 +1236,16 @@ successful_load_dummy = pnw.Checkbox(value=False, visible=False)
 
 
 def load_sample(event):
+    """
+    Load the sample sequence into the application and update the UI.
+
+    This function is triggered when the user clicks the "Example sequence" button. It loads the sample sequence into the
+    application, resets the global state, and updates the UI to reflect the new sequence.
+
+    Parameters:
+        event (bokeh.events.ButtonClick): The event object triggered by the button click.
+    """
+
     global sequences, current_coloring_mode, df, download_btn
 
     sequences = []
@@ -953,6 +1300,17 @@ file_input = pnw.FileInput(accept=".fasta,.fa,.fas,.aln")
 
 # Define function to load FASTA file and display sequences
 def load_fasta(event):
+    """
+    Load a FASTA file and display the sequences in the application.
+
+    This function is triggered when a new FASTA file is uploaded using the file input widget. It reads the file
+    contents, parses the sequences, and displays the alignment in the application. It also updates the global state
+    and resets the mutation settings.
+
+    Parameters:
+        event (bokeh.events.ButtonClick): The event object triggered by the file input widget.
+    """
+
     global sequences, current_coloring_mode, df
     global top, download_btn, file_input_watcher, file_input
 
@@ -1044,6 +1402,25 @@ def mutate(
     identifier,
     A_rich,
 ):
+    """
+    Apply synonymous mutations to the sequence according to the user's settings.
+
+    This function applies synonymous mutations to the sequence according to the user's settings, including the gap method,
+    gap value, protection settings, and A-richness. It then updates the sequence alignment display and the mutation
+    settings table.
+
+    Parameters:
+        event (bokeh.events.ButtonClick): The event object triggered by the mutation button.
+        gap_method (int): The method for specifying the minimum gap between CpG sites. If 1, the user specifies the
+            minimum gap value. If 2, the user specifies the desired average gap value, and the algorithm optimizes the
+            minimum gap value.
+        option_value (int): The minimum or desired average gap value between CpG sites.
+        protection_start_value (int): The number of initial nucleotides to protect from mutation.
+        protection_end_value (int): The number of terminal nucleotides to protect from mutation.
+        identifier (str): The identifier for the mutated sequence.
+        A_rich (bool): Whether to increase A-richness in the remaining codons.
+    """
+
     global sequences, download_btn
 
     original_id = sequences[0].id
@@ -1143,6 +1520,16 @@ def mutate(
 
 
 def on_mutate_btn_click(event):
+    """
+    Handle the click event for the mutation button.
+
+    This function is triggered when the user clicks the mutation button. It reads the user's settings for the mutation
+    and applies the synonymous mutations to the sequence accordingly.
+
+    Parameters:
+        event (bokeh.events.ButtonClick): The event object triggered by the mutation button.
+    """
+
     global sequences
 
     gap_method = w1.value
@@ -1234,6 +1621,23 @@ def update_table(
     CpG_abundance_change=None,
     A_abundance_change=None,
 ):
+    """
+    Update the mutation settings table with new data.
+
+    This function updates the mutation settings table with new data, including the sequence identifier, average CpG gap,
+    mutation settings, CpG count, and changes in CpG and A abundance.
+
+    Parameters:
+        average_CpG_gap (float): The average gap between CpG sites in the sequence.
+        sequence_id (str): The identifier for the sequence.
+        mutation_settings (str, optional): The settings used for the synonymous mutations. Defaults to None.
+        CpG_count (int): The number of CpG sites in the sequence.
+        CpG_abundance_change (float, optional): The percentage change in CpG abundance between the original and new
+            sequences. Defaults to None.
+        A_abundance_change (float, optional): The percentage change in A abundance between the original and new sequences.
+            Defaults to None.
+    """
+
     global df
 
     data = []
