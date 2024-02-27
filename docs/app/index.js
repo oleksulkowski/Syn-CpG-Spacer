@@ -836,8 +836,8 @@ A_rich_toggle = pnw.RadioButtonGroup(
     name="A-rich",
     options={"Yes": 1, "No": 2},
     value=2,
-    button_type="default",
     button_style="solid",
+    button_type="light",
 )
 
 modifiers = pn.FlexBox(
@@ -889,7 +889,9 @@ def download_alignment():
 download_btn = pnw.FileDownload(
     callback=download_alignment,
     filename="alignment.fasta",
+    button_style="solid",
     button_type="primary",
+    height=32,
     label="Download alignment",
 )
 download_btn.visible = False
