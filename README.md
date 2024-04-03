@@ -1,5 +1,9 @@
 # Syn-CpG-Spacer
 
+[![DOI](https://joss.theoj.org/papers/10.21105/joss.06332/status.svg)](https://doi.org/10.21105/joss.06332)
+![GitHub Release](https://img.shields.io/github/v/release/oleksulkowski/Syn-CpG-Spacer)
+![GitHub License](https://img.shields.io/github/license/oleksulkowski/Syn-CpG-Spacer)
+
 Syn-CpG-Spacer is a Progressive Web App (PWA) for biomedical scientists written in Python using Panel, Bokeh, Biopython libraries. It allows for synonymous recoding of genetic sequences to increase the frequency of CpG dinucleotides by setting constraints on their spacing. The primary usecase are experiments with attenuation of viruses.
 
 The software changes codons along a sequence to synonymous alternatives that form CpG dinucleotides according to the user's settings. This can be done at codon positions 1-2, 2-3 and 3-1 (split over two subsequent codons).
