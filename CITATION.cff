@@ -1,0 +1,44 @@
+cff-version: "1.2.0"
+authors:
+- family-names: Sulkowski
+  given-names: Aleksander
+  orcid: "https://orcid.org/0000-0002-0624-428X"
+- family-names: Bouton
+  given-names: Clément
+  orcid: "https://orcid.org/0000-0001-9607-6533"
+- family-names: Swanson
+  given-names: Chad
+  orcid: "https://orcid.org/0000-0002-6650-3634"
+contact:
+- family-names: Sulkowski
+  given-names: Aleksander
+  orcid: "https://orcid.org/0000-0002-0624-428X"
+doi: 10.5281/zenodo.10781374
+message: If you use this software, please cite our article in the
+  Journal of Open Source Software.
+preferred-citation:
+  authors:
+  - family-names: Sulkowski
+    given-names: Aleksander
+    orcid: "https://orcid.org/0000-0002-0624-428X"
+  - family-names: Bouton
+    given-names: Clément
+    orcid: "https://orcid.org/0000-0001-9607-6533"
+  - family-names: Swanson
+    given-names: Chad
+    orcid: "https://orcid.org/0000-0002-6650-3634"
+  date-published: 2024-04-03
+  doi: 10.21105/joss.06332
+  issn: 2475-9066
+  issue: 96
+  journal: Journal of Open Source Software
+  publisher:
+    name: Open Journals
+  start: 6332
+  title: "Syn-CpG-Spacer: A Panel web app for synonymous recoding of
+    viral genomes with CpG dinucleotides"
+  type: article
+  url: "https://joss.theoj.org/papers/10.21105/joss.06332"
+  volume: 9
+title: "Syn-CpG-Spacer: A Panel web app for synonymous recoding of viral
+  genomes with CpG dinucleotides"
