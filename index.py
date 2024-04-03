@@ -1130,21 +1130,24 @@ modifiers = pn.FlexBox(
     new_seq_id,
     pn.FlexBox(mutate_btn, styles={"margin-top": "10px"}, justify_content="center"),
     flex_direction="column",
-    styles={"flex-wrap": "wrap"},
+    styles={"flex-wrap": "wrap", "margin-bottom": "80px"},
 )
 modifiers.visible = False
 
 # 'How to cite' section will be added here after publication
-footer = pn.pane.HTML(
-    """
-
+footer = pn.FlexBox(
+    pn.pane.Markdown(
+        """
+    # Cite as
+    
+    Sulkowski, A., Bouton, C., & Swanson, C. (2024). Syn-CpG-Spacer: A Panel web app for synonymous recoding of viral genomes with CpG dinucleotides. Journal of Open Source Software, 9(96), 6332. https://doi.org/10.21105/joss.06332
     """,
-    styles={
-        "width": "100%",
-        "text-align": "center",
-        "margin-top": "20px",
-        "margin-bottom": "20px",
-    },
+        styles={
+            "width": "100%",
+            "margin-top": "20px",
+            "margin-bottom": "20px",
+        },
+    )
 )
 
 template.sidebar.extend([modifiers, footer])
